@@ -1,3 +1,4 @@
 <div>
-  This plugin integrates Gearman with Jenkins.
+  This plugin integrates Gearman with Jenkins.  Its purpose is to use Gearman workers
+  to execute Jenkins builds.
 </div>
