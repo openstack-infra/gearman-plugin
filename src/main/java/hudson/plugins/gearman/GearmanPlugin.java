@@ -18,7 +18,78 @@
 
 package hudson.plugins.gearman;
 
+import hudson.Launcher;
+import hudson.Extension;
+import hudson.model.Build;
+import hudson.model.BuildListener;
+import hudson.model.AbstractBuild;
+import hudson.tasks.Builder;
+import hudson.tasks.BuildStepDescriptor;
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.DataBoundConstructor;
 
-public class GearmanPlugin {
+import javax.management.Descriptor;
 
+import net.sf.json.JSONObject;
+
+/**
+ * GearmanPlugin {@link Builder}.
+ *
+ * <p>
+ * This sets up the gearman plugin as another plugin in Jenkins
+ * It will allow us to start and stop the gearman workers.
+ * <p>
+ *
+ * @author Khai Do
+ */
+public class GearmanPlugin extends Builder {
+
+    private final String name;
+
+    @DataBoundConstructor
+    public GearmanPlugin(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
+        
+        return true;
+    }
+
+    @Override
+    public DescriptorImpl getDescriptor() {
+        
+        return (DescriptorImpl)super.getDescriptor();
+    }
+
+    @Extension
+    public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
+        
+        public DescriptorImpl() {
+            load();
+        }
+
+        @Override
+        public String getDisplayName() {
+            return "GearmanPlugin";
+        }
+
+        @Override
+        public boolean isApplicable(Class type) {
+            return true;
+        }
+
+        @Override
+        public boolean configure(StaplerRequest staplerRequest, JSONObject json) throws FormException {
+            
+            save();
+            return true;
+        }
+
+    }
 }
