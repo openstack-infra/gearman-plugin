@@ -102,7 +102,7 @@ public class GearmanPlugin extends Builder {
 
         @Override
         public String getDisplayName() {
-            return "GearmanPlugin";
+            return "Gearman Plugin";
         }
 
         @Override
