@@ -18,31 +18,15 @@
 
 package hudson.plugins.gearman;
 
-import org.gearman.worker.DefaultGearmanFunctionFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /*
- * This is a thread to manage gearman executors
- * This is used to abort/delete jenkins jobs.
+ * Constants for the Gearman Plugin
  */
+public interface Constants {
+    /* Defines. */
 
-public class ManagementWorkerThread extends AbstractWorkerThread {
+    public static final String GEARMAN_DEFAULT_TCP_HOST = "127.0.0.1";
+    public static final int GEARMAN_DEFAULT_TCP_PORT = 4730;
 
-    private static final Logger logger = LoggerFactory
-            .getLogger(AbstractWorkerThread.class);
-    private Thread thread;
-
-    public ManagementWorkerThread(String host, int port, String name) {
-        super(host, port, name);
-
-    }
-
-    @Override
-    public void registerJobs() {
-
-        logger.info("----- Registering management jobs on " + name + " ----");
-
-    }
-
+    public static final String PLUGIN_LOGGER_NAME = "hudson.plugins.gearman.logger";
+    public static final String PLUGIN_EXECTUOR_LOGGER_NAME = "hudson.plugins.gearman.executor.logger";
 }

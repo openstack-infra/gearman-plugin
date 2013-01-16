@@ -18,26 +18,61 @@
 
 package hudson.plugins.gearman;
 
-import java.util.Date;
+import hudson.model.Node;
+
+import java.util.List;
+
+import jenkins.model.Jenkins;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ExecutorWorkerThread extends AbstractWorkerThread {
+/*
+ * This is thread to run gearman executors
+ * Executors are used to initiate jenkins builds
+ */
+public class ExecutorWorkerThread extends AbstractWorkerThread{
 
     private static final Logger logger = LoggerFactory
             .getLogger(AbstractWorkerThread.class);
 
-    public ExecutorWorkerThread(String host, int port, String name) {
+    private Node node;
+
+    public ExecutorWorkerThread(String host, int port, String nodeName){
+        super(host, port, nodeName);
+        this.node = findNode(nodeName);
+
+    }
+
+    /*
+     * This function finds the node with the corresponding node name Returns the
+     * node if found, otherwise returns null
+     */
+    private Node findNode(String nodeName){
+
+        Jenkins jenkins = Jenkins.getInstance();
+        List<Node> nodes = jenkins.getNodes();
+        Node myNode = null;
+
+        for (Node node : nodes) {
+            if (node.getNodeName().equals(nodeName)){
+                myNode = node;
+            }
+        }
+
+        return myNode;
+    }
+
+    public ExecutorWorkerThread(String host, int port, String name, Node node){
         super(host, port, name);
+        this.node = node;
 
     }
 
     @Override
     public void registerJobs() {
 
-        logger.info("----- ExecutorWorkerThread registerJobs function ----");
-        logger.info("----- Register executor jobs here ----");
+        logger.info("----- Registering executor jobs on " + name + " ----");
 
     }
 

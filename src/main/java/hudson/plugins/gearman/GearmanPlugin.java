@@ -18,11 +18,16 @@
 
 package hudson.plugins.gearman;
 
+import java.util.List;
+import java.util.Stack;
+
 import hudson.Launcher;
 import hudson.Extension;
 import hudson.model.Build;
 import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
+import hudson.model.Computer;
+import hudson.model.Node;
 import hudson.tasks.Builder;
 import hudson.tasks.BuildStepDescriptor;
 
@@ -33,6 +38,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.management.Descriptor;
+
+import jenkins.model.Jenkins;
 
 import net.sf.json.JSONObject;
 
@@ -49,7 +56,7 @@ import net.sf.json.JSONObject;
 public class GearmanPlugin extends Builder {
 
     private static final Logger logger = LoggerFactory
-            .getLogger(GearmanPlugin.class);
+            .getLogger(Constants.PLUGIN_LOGGER_NAME);
     private final String name;
 
     @DataBoundConstructor
@@ -79,13 +86,25 @@ public class GearmanPlugin extends Builder {
             BuildStepDescriptor<Builder> {
         
         private static final Logger logger = LoggerFactory
-                .getLogger(DescriptorImpl.class);
+                .getLogger(Constants.PLUGIN_LOGGER_NAME);
         private boolean launchWorker; // launchWorker state (from UI checkbox)
         private String host; // gearman server host
         private int port; // gearman server port
+        private Jenkins jenkins;
+        public static Stack<AbstractWorkerThread> gewtHandles; // handles to
+                                                               // executor
+                                                               // workers
+        public static Stack<AbstractWorkerThread> gmwtHandles; // handles to
+                                                               // management
+                                                               // workers
 
         public DescriptorImpl() {
             logger.info("--- DescriptorImpl Constructor ---");
+
+            jenkins = Jenkins.getInstance();
+            gewtHandles = new Stack<AbstractWorkerThread>();
+            gmwtHandles = new Stack<AbstractWorkerThread>();
+
             logger.info("--- DescriptorImpl Constructor ---" + host);
             logger.info("--- DescriptorImpl Constructor ---" + port);
 
@@ -125,7 +144,7 @@ public class GearmanPlugin extends Builder {
                         "Error getting the gearman host name");
             }
 
-            // user input vaerification
+            // user input verification
             if (StringUtils.isEmpty(host) || StringUtils.isBlank(host))
                 throw new RuntimeException("Invalid gearman host name");
 
@@ -145,6 +164,52 @@ public class GearmanPlugin extends Builder {
                     + this.getHost());
             logger.info("--- DescriptorImpl Configure function ---"
                     + this.getPort());
+
+            /*
+             * Purpose here is to create a 1:1 mapping of 'gearman
+             * worker':'jenkins node' then use the gearman worker to execute
+             * builds on that jenkins node
+             */
+            List<Node> nodes = jenkins.getNodes();
+
+            if (launchWorker && !nodes.isEmpty()) {
+
+                AbstractWorkerThread gwt = null;
+
+                for (Node node : nodes) {
+                    Computer c = node.toComputer();
+                    if (c.isOnline()) {
+                        // create a gearman executor for every node
+                        gwt = new ExecutorWorkerThread(host, port,
+                                node.getNodeName());
+                        gwt.registerJobs();
+                        gwt.start();
+                        gewtHandles.push(gwt);
+                    }
+                }
+
+                /*
+                 * Create one additional worker as a management node. This
+                 * worker will be used to abort builds.
+                 */
+                if (!gewtHandles.isEmpty()) {
+                    gwt = new ManagementWorkerThread(host, port, host);
+                    gwt.registerJobs();
+                    gwt.start();
+                    gmwtHandles.push(gwt);
+
+                }
+
+            } else if (!launchWorker) { // stop worker threads
+                while (!gewtHandles.isEmpty()) { // stop executors
+                    AbstractWorkerThread task = gewtHandles.pop();
+                    task.stop();
+                }
+                while (!gmwtHandles.isEmpty()) { // stop management
+                    AbstractWorkerThread task = gmwtHandles.pop();
+                    task.stop();
+                }
+            }
 
             save();
             return true;
