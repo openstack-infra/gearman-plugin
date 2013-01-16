@@ -18,7 +18,6 @@
 
 package hudson.plugins.gearman;
 
-import org.gearman.worker.DefaultGearmanFunctionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,22 +26,21 @@ import org.slf4j.LoggerFactory;
  * This is used to abort/delete jenkins jobs.
  */
 
-public class ManagementWorkerThread extends AbstractWorkerThread {
+public class ManagementWorkerThread extends AbstractWorkerThread{
 
     private static final Logger logger = LoggerFactory
             .getLogger(AbstractWorkerThread.class);
     private Thread thread;
 
-    public ManagementWorkerThread(String host, int port, String name) {
+    public ManagementWorkerThread(String host, int port, String name){
         super(host, port, name);
 
     }
 
     @Override
-    public void registerJobs() {
+    public void registerJobs(){
 
         logger.info("----- Registering management jobs on " + name + " ----");
-
     }
 
 }

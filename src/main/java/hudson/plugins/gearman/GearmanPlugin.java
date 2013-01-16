@@ -1,5 +1,5 @@
 /*
- * 
+ *
  * Copyright 2013 Hewlett-Packard Development Company, L.P.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +13,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
+ *
  */
 
 package hudson.plugins.gearman;
@@ -91,12 +91,10 @@ public class GearmanPlugin extends Builder {
         private String host; // gearman server host
         private int port; // gearman server port
         private Jenkins jenkins;
-        public static Stack<AbstractWorkerThread> gewtHandles; // handles to
-                                                               // executor
-                                                               // workers
-        public static Stack<AbstractWorkerThread> gmwtHandles; // handles to
-                                                               // management
-                                                               // workers
+
+        // handles to gearman workers
+        public static Stack<AbstractWorkerThread> gewtHandles;
+        public static Stack<AbstractWorkerThread> gmwtHandles;
 
         public DescriptorImpl() {
             logger.info("--- DescriptorImpl Constructor ---");

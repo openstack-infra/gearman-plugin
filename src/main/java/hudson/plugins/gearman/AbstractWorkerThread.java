@@ -44,6 +44,7 @@ public abstract class AbstractWorkerThread implements Runnable {
     private GearmanNIOJobServerConnection conn;
     private Thread thread;
 
+
     public AbstractWorkerThread(String host, int port, String name) {
         this.name = name;
         this.host = host;
