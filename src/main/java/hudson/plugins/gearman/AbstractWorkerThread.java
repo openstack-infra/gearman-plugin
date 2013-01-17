@@ -27,6 +27,7 @@ import org.gearman.worker.GearmanWorkerImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 /*
  * Thread to run gearman worker
  */
@@ -55,7 +56,8 @@ public abstract class AbstractWorkerThread implements Runnable {
     }
 
     /*
-     * Register jobs with the gearman worker. This method should be overriden.
+     * Register jobs with the gearman worker.
+     * This method should be overriden.
      */
     public void registerJobs() {
 
@@ -77,6 +79,7 @@ public abstract class AbstractWorkerThread implements Runnable {
     public void stop() {
         // Interrupt the thread so it unblocks any blocking call
 
+
         if (worker.isRunning()) {
             logger.info("Stopping " + name + " (" + new Date().toString() + ")");
             worker.stop();
@@ -95,22 +98,20 @@ public abstract class AbstractWorkerThread implements Runnable {
             System.exit(1);
         }
 
+
     }
 
     /*
      * Execute the thread (non-Javadoc)
-     *
      * @see java.lang.Runnable#run()
      */
     @Override
     public void run() {
 
         if (!worker.isRunning()) {
-            logger.info("Starting Worker " + name + " ("
-                    + new Date().toString() + ")");
+            logger.info("Starting Worker "+ name +" ("+new Date().toString()+")");
             worker.setWorkerID(UUID.randomUUID().toString());
             worker.addServer(conn);
-            // blocking call.. https://answers.launchpad.net/gearman-java/+question/219175
             worker.work();
         }
 
@@ -121,7 +122,7 @@ public abstract class AbstractWorkerThread implements Runnable {
 
             try {
                 Thread.sleep(5000);
-            } catch (InterruptedException ex) {
+            } catch(InterruptedException ex) {
                 Thread.currentThread().interrupt();
             }
 

@@ -21,6 +21,7 @@ package hudson.plugins.gearman;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
+import java.util.UUID;
 
 import hudson.model.Cause;
 import hudson.model.Node;
@@ -50,7 +51,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
     }
 
     public GearmanJobResult executeFunction() {
-        logger.info("----- Registering management jobs on " + name + " ----");
+        logger.info("----- Running executeFunction in " + name + " ----");
 
         // decode the data
         String decoded = null;
@@ -65,12 +66,10 @@ public class StartJobWorker extends AbstractGearmanFunction {
                 new TypeToken<Map<String, String>>() {
                 }.getType());
 
+        UUID buildId = UUID.randomUUID();
         // send build to node with parameters
-        LabelAssignmentAction laa = new LabelAssignmentActionImpl(
-                node.getNodeName());
-        System.out.println("Sending " + getName() + " to " + node.getNodeName()
-                + " with build params " + params);
-        project.scheduleBuild2(0, new Cause.UserIdCause(), laa);
+        logger.info("Sending job to " + node.getNodeName()
+                + " with UUID " + buildId + " and build params " + params);
 
         GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, true,
                 decoded.toString().getBytes(), new byte[0], new byte[0], 0, 0);

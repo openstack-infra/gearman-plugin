@@ -18,9 +18,13 @@
 
 package hudson.plugins.gearman;
 
+import hudson.model.Computer;
+import hudson.model.Label;
 import hudson.model.Node;
+import hudson.model.Project;
 
 import java.util.List;
+import java.util.Scanner;
 
 import jenkins.model.Jenkins;
 
@@ -36,7 +40,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
     private static final Logger logger = LoggerFactory
             .getLogger(AbstractWorkerThread.class);
 
-    private Node node;
+    private final Node node;
 
     public ExecutorWorkerThread(String host, int port, String nodeName){
         super(host, port, nodeName);
@@ -74,6 +78,67 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
 
         logger.info("----- Registering executor jobs on " + name + " ----");
 
-    }
+        /*
+         * We start with an empty worker.
+         */
+        worker.unregisterAll();
 
+        /*
+         * Now register or re-register all functions.
+         */
+        Jenkins jenkins = Jenkins.getInstance();
+
+        List<Project> allProjects = jenkins.getProjects();
+        // this call dies with NPE if there is a project without any labels
+        // List<AbstractProject> projects =
+        // jenkins.getAllItems(AbstractProject.class);
+        for (Project<?, ?> project : allProjects) {
+            String projectName = project.getName();
+
+            // ignore all disabled projects
+            if (!project.isDisabled()) {
+
+                Label label = project.getAssignedLabel();
+
+                if (label == null) { // project has no label -> so register
+                                     // "build:projectName"
+                    String jobFunctionName = "build:" + projectName;
+                    logger.info("Registering job " + jobFunctionName + " on "
+                            + node.getNodeName());
+                    worker.registerFunctionFactory(new CustomGearmanFunctionFactory(
+                            jobFunctionName, StartJobWorker.class.getName(),
+                            project, node));
+
+                } else { // register "build:projectName:nodeName"
+
+                    // make sure node is online
+                    Computer c = node.toComputer();
+                    boolean nodeOnline = c.isOnline();
+
+                    if (nodeOnline) {
+                        // get and iterate thru them to build the functions
+                        // to register with the worker
+                        String projectLabelString = label.getExpression();
+                        Scanner projectLabels = new Scanner(projectLabelString);
+                        try {
+                            projectLabels.useDelimiter("\\|\\|");
+                            while (projectLabels.hasNext()) {
+                                String projectLabel = projectLabels.next();
+                                String jobFunctionName = "build:" + projectName
+                                        + ":" + projectLabel;
+                                logger.info("Registering job "
+                                        + jobFunctionName + " on "
+                                        + node.getNodeName());
+                                worker.registerFunctionFactory(new CustomGearmanFunctionFactory(
+                                        jobFunctionName, StartJobWorker.class
+                                                .getName(), project, node));
+                            }
+                        } finally {
+                            projectLabels.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

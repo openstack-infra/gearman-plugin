@@ -20,6 +20,7 @@
 package hudson.plugins.gearman;
 
 import java.io.UnsupportedEncodingException;
+import java.util.UUID;
 
 import org.gearman.client.GearmanJobResult;
 import org.gearman.client.GearmanJobResultImpl;
@@ -35,9 +36,9 @@ public class StopJobWorker extends AbstractGearmanFunction {
     public GearmanJobResult executeFunction() {
 
         String decoded = null;
+        UUID buildId = UUID.randomUUID();
 
-        logger.info("---- Running executeFunction  in " + this.getName()
-                + " -------");
+        logger.info("---- Running executeFunction  in " + this.getName()+ " -------");
 
         try {
             decoded = new String((byte[]) this.data, "UTF-8");
@@ -45,6 +46,8 @@ public class StopJobWorker extends AbstractGearmanFunction {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+
+        logger.info("---- Aborting Jenkins build " + buildId + " -------");
 
         GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, true,
                 decoded.toString().getBytes(), new byte[0], new byte[0], 0, 0);

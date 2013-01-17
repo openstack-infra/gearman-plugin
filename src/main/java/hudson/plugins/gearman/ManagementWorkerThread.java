@@ -18,8 +18,11 @@
 
 package hudson.plugins.gearman;
 
+import org.gearman.worker.DefaultGearmanFunctionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+
 
 /*
  * This is a thread to manage gearman executors
@@ -34,13 +37,16 @@ public class ManagementWorkerThread extends AbstractWorkerThread{
 
     public ManagementWorkerThread(String host, int port, String name){
         super(host, port, name);
-
     }
 
     @Override
     public void registerJobs(){
+        String jobFunctionName = "stop:"+host;
+        System.out.println("Registering job "+jobFunctionName+" on "+host);
+        worker.registerFunctionFactory(new DefaultGearmanFunctionFactory(jobFunctionName,
+                StopJobWorker.class.getName()));
 
-        logger.info("----- Registering management jobs on " + name + " ----");
+
     }
 
 }
