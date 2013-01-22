@@ -31,8 +31,6 @@ import hudson.model.Project;
 
 import java.lang.reflect.Constructor;
 
-import jenkins.model.Jenkins;
-
 import org.gearman.common.Constants;
 import org.gearman.worker.DefaultGearmanFunctionFactory;
 import org.gearman.worker.GearmanFunction;
@@ -43,7 +41,6 @@ public class CustomGearmanFunctionFactory extends DefaultGearmanFunctionFactory 
     private final Project<?,?> project;
     private final Node node;
     private final String theClass;
-    private final Jenkins jenkins;
 
     private static final org.slf4j.Logger LOG =  LoggerFactory.getLogger(
             Constants.GEARMAN_WORKER_LOGGER_NAME);
@@ -54,7 +51,6 @@ public class CustomGearmanFunctionFactory extends DefaultGearmanFunctionFactory 
         this.theClass = className;
         this.project = project;
         this.node = node;
-        jenkins = Jenkins.getInstance();
     }
 
 
@@ -64,13 +60,15 @@ public class CustomGearmanFunctionFactory extends DefaultGearmanFunctionFactory 
     }
 
 
-    private static GearmanFunction createFunctionInstance(String className, Project project, Node node) {
+
+
+    private static GearmanFunction createFunctionInstance(String className, Project<?,?> project, Node node) {
 
         GearmanFunction f = null;
         try {
 
-            Class c = Class.forName(className);
-            Constructor con = c.getConstructor(new Class[]{Project.class, Node.class});
+            Class<?> c = Class.forName(className);
+            Constructor<?> con = c.getConstructor(new Class[]{Project.class, Node.class});
             Object o = con.newInstance(new Object[] {project, node});
 
             if (o instanceof GearmanFunction) {
