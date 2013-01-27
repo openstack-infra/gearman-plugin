@@ -20,40 +20,36 @@ package hudson.plugins.gearman;
 
 import java.util.List;
 
-import hudson.model.Label;
 import hudson.model.ParameterValue;
 import hudson.model.ParametersAction;
-import hudson.model.labels.LabelAtom;
-import hudson.model.queue.SubTask;
 
-/*
- * Overview: This class provides the ability to send
- * a build with parameters to a specific jenkins node
+/**
+ * Action to send parameters to a jenkins build.
  *
+ * @author Khai Do
  */
-
 public class NodeParametersAction extends ParametersAction {
 
-    LabelAtom labelAtom;    // node label to assign build to a node
 
-
-    public NodeParametersAction(List<ParameterValue> parameters, String label) {
-        super(parameters);
-        this.labelAtom = new LabelAtom(label);
-
-    }
+    String id;              // the id used to track the build job
 
     public NodeParametersAction(List<ParameterValue> parameters) {
-        super(parameters);
+        this(parameters, "");
+
     }
 
-    public NodeParametersAction(ParameterValue... parameters) {
+    public NodeParametersAction(List<ParameterValue> parameters, String id) {
         super(parameters);
+        this.id = id;
+
     }
 
-    @Override
-    public Label getAssignedLabel(SubTask task) {
-        return labelAtom;
+    public String getUuid() {
+        return id;
+    }
+
+    public void setUuid(String uuid) {
+        this.id = uuid;
     }
 
 

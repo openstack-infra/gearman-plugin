@@ -25,9 +25,11 @@ import java.util.List;
 import java.util.Map;
 import hudson.model.Cause;
 import hudson.model.Node;
+import hudson.model.Action;
 import hudson.model.ParameterValue;
 import hudson.model.Project;
 import hudson.model.StringParameterValue;
+
 import org.gearman.client.GearmanJobResult;
 import org.gearman.client.GearmanJobResultImpl;
 import org.gearman.worker.AbstractGearmanFunction;
@@ -37,14 +39,16 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
-/*
- * Overview: This is a gearman function that will start jenkins builds
+/**
+ * This is a gearman function that will start jenkins builds
+ *
  * Assumptions:  When this function is created it has an associated
  *      node and project.  The build will start a jenkins build
  *      on its assigned assigned project and node and pass along
  *      all of the parameters from the client.
+ *
+ * @author Khai Do
  */
-
 public class StartJobWorker extends AbstractGearmanFunction {
 
     private static final Logger logger = LoggerFactory
@@ -58,11 +62,15 @@ public class StartJobWorker extends AbstractGearmanFunction {
         this.node = node;
     }
 
+    /*
+     * The Gearman Function
+     * @see org.gearman.worker.AbstractGearmanFunction#executeFunction()
+     */
     @Override
     public GearmanJobResult executeFunction() {
         logger.info("----- Running executeFunction in " + name + " ----");
 
-        // decode the data
+        // decode the data from the client
         String decoded = null;
         try {
             decoded = new String((byte[]) this.data, "UTF-8");
@@ -86,13 +94,6 @@ public class StartJobWorker extends AbstractGearmanFunction {
 
         // create new parameter objects to pass to jenkins build
         List<ParameterValue> buildParams = new ArrayList<ParameterValue>();
-
-
-        // tried to use a RunParameterValue but not sure what
-        // jenkins expects for a "valid id".  doing this way
-        // fails with java.lang.IllegalArgumentException: Invalid id
-//        buildParams.add(new RunParameterValue("uuid", "16"));
-
         String uuid = null;
         // create the build parameters that were passed in from client
         for (Map.Entry<String, String> entry : inParams.entrySet()) {
@@ -108,7 +109,12 @@ public class StartJobWorker extends AbstractGearmanFunction {
         logger.info("Scheduling build on " + node.getNodeName()
                 + " with UUID " + uuid + " and build params " + inParams);
 
-        project.scheduleBuild2(0, new Cause.UserIdCause(), new NodeParametersAction(buildParams, node.getNodeName()));
+        // create action to run on a specified node
+        Action runNode = new NodeAssignmentAction(node.getNodeName());
+        // create action for parameters
+        Action params = new NodeParametersAction(buildParams, uuid);
+        Action [] actions = {runNode, params};
+        project.scheduleBuild2(0, new Cause.UserIdCause(), actions);
 
 
         GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, true,

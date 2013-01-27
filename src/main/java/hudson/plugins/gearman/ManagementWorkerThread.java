@@ -23,10 +23,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-
-/*
- * This is a thread to manage gearman executors
- * This is used to abort/delete jenkins jobs.
+/**
+ * This is a thread to run gearman management workers
+ *
+ * @author Khai Do
  */
 
 public class ManagementWorkerThread extends AbstractWorkerThread{
@@ -39,6 +39,13 @@ public class ManagementWorkerThread extends AbstractWorkerThread{
         super(host, port, name);
     }
 
+    /**
+     * Register gearman functions on this executor.  This will unregister all
+     * functions before registering new functions.
+     *
+     * This executor only registers one function "stop:$hostname".
+     *
+     */
     @Override
     public void registerJobs(){
         String jobFunctionName = "stop:"+host;
