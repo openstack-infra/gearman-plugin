@@ -23,6 +23,10 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
 import hudson.model.Cause;
 import hudson.model.Node;
 import hudson.model.Action;
@@ -106,19 +110,38 @@ public class StartJobWorker extends AbstractGearmanFunction {
         }
 
         // schedule the jenkins build
-        logger.info("Scheduling build on " + node.getNodeName()
-                + " with UUID " + uuid + " and build params " + inParams);
+        logger.info("Scheduling "+project.getName()+" build #" +
+                project.getNextBuildNumber()+" on " + node.getNodeName()
+                + " with UUID " + uuid + " and build params " + buildParams);
 
         // create action to run on a specified node
         Action runNode = new NodeAssignmentAction(node.getNodeName());
         // create action for parameters
         Action params = new NodeParametersAction(buildParams, uuid);
         Action [] actions = {runNode, params};
-        project.scheduleBuild2(0, new Cause.UserIdCause(), actions);
+
+        Future<?> future = project.scheduleBuild2(0, new Cause.UserIdCause(), actions);
 
 
-        GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, true,
-                decoded.toString().getBytes(), new byte[0], new byte[0], 0, 0);
+        String jobResultMsg = "";
+        boolean jobResult = false;
+
+        try {
+            future.get();
+            jobResult = true;
+            jobResultMsg = "Build completed on " + node.getNodeName()
+                    + " with UUID " + uuid + " and build params " + buildParams;
+        } catch (InterruptedException e1) {
+            // TODO Auto-generated catch block
+            jobResultMsg = "Build interrupted on " + node.getNodeName();
+            e1.printStackTrace();
+        } catch (ExecutionException e1) {
+            // TODO Auto-generated catch block
+            jobResultMsg = "Build failed on " + node.getNodeName();
+        }
+
+        GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, jobResult,
+                jobResultMsg.getBytes(), new byte[0], new byte[0], 0, 0);
         return gjr;
     }
 }

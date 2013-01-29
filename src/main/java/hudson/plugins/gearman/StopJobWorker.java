@@ -19,14 +19,12 @@
 
 package hudson.plugins.gearman;
 
-import hudson.model.Action;
 import hudson.model.Computer;
 import hudson.model.Executor;
 import hudson.model.Label;
 import hudson.model.Node;
 import hudson.model.Queue;
 import hudson.model.Queue.Executable;
-import hudson.model.Queue.Task;
 import hudson.model.queue.SubTask;
 
 import java.io.UnsupportedEncodingException;
@@ -92,12 +90,22 @@ public class StopJobWorker extends AbstractGearmanFunction {
 
         }
 
+
         // Cancel jenkins jobs that contain matching uuid from client
-        boolean canceled = cancelBuild(inUuid);
+
+        boolean jobResult = cancelBuild(inUuid);
+        String jobResultMsg = null;
+        if (jobResult){
+            jobResultMsg = "Canceled jenkins build " + inUuid;
+
+        } else {
+            jobResultMsg = "Could not cancel build " + inUuid;
+
+        }
 
 
-        GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, true,
-                decoded.toString().getBytes(), new byte[0], new byte[0], 0, 0);
+        GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, jobResult,
+                jobResultMsg.getBytes(), new byte[0], new byte[0], 0, 0);
         return gjr;
     }
 

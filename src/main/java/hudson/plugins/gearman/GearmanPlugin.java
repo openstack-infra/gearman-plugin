@@ -165,8 +165,8 @@ public class GearmanPlugin extends Builder {
 
             /*
              * Purpose here is to create a 1:1 mapping of 'gearman
-             * worker':'jenkins node' then use the gearman worker to execute
-             * builds on that jenkins node
+             * worker':'jenkins executor' then use the gearman worker to execute
+             * builds on that jenkins nodes
              */
             List<Node> nodes = jenkins.getNodes();
 
@@ -177,12 +177,16 @@ public class GearmanPlugin extends Builder {
                 for (Node node : nodes) {
                     Computer c = node.toComputer();
                     if (c.isOnline()) {
-                        // create a gearman executor for every node
-                        gwt = new ExecutorWorkerThread(host, port,
-                                node.getNodeName());
-                        gwt.registerJobs();
-                        gwt.start();
-                        gewtHandles.push(gwt);
+                        int numExecutors = c.getExecutors().size();
+                        for (int i=0; i<numExecutors; i++) {
+
+                            // create a gearman executor for every jenkins executor
+                            gwt = new ExecutorWorkerThread(host, port,
+                                    node.getNodeName()+"-exec"+Integer.toString(i), node);
+                            gwt.registerJobs();
+                            gwt.start();
+                            gewtHandles.push(gwt);
+                        }
                     }
                 }
 

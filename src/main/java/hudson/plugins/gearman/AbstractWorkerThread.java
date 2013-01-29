@@ -19,7 +19,6 @@
 package hudson.plugins.gearman;
 
 import java.util.Date;
-import java.util.UUID;
 
 import org.gearman.common.GearmanNIOJobServerConnection;
 import org.gearman.worker.GearmanWorker;
@@ -28,8 +27,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-/*
- * Thread to run gearman worker
+/**
+ * Base object for gearman worker threads
+ *
+ *
+ * @author Khai Do
  */
 
 public abstract class AbstractWorkerThread implements Runnable {
@@ -110,7 +112,7 @@ public abstract class AbstractWorkerThread implements Runnable {
 
         if (!worker.isRunning()) {
             logger.info("Starting Worker "+ name +" ("+new Date().toString()+")");
-            worker.setWorkerID(UUID.randomUUID().toString());
+            worker.setWorkerID(name);
             worker.addServer(conn);
             worker.work();
         }

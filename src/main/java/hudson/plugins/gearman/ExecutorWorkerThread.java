@@ -44,12 +44,11 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
 
     private final Node node;
 
-    public ExecutorWorkerThread(String host, int port, String nodeName){
-        super(host, port, nodeName);
-        this.node = findNode(nodeName);
-
+    // constructor
+    public ExecutorWorkerThread(String host, int port, String name, Node node) {
+        super(host, port, name);
+        this.node = node;
     }
-
 
     /**
      * This function finds the node with the corresponding node name Returns the
@@ -73,11 +72,6 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
         }
 
         return myNode;
-    }
-
-    public ExecutorWorkerThread(String host, int port, String name, Node node){
-        super(host, port, name);
-        this.node = node;
     }
 
 
@@ -183,7 +177,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
                                  // "build:projectName" on all nodes
                 String jobFunctionName = "build:" + projectName;
                 logger.info("Registering job " + jobFunctionName + " on "
-                        + this.node.getNodeName());
+                        + name);
                 worker.registerFunctionFactory(new CustomGearmanFunctionFactory(
                         jobFunctionName, StartJobWorker.class.getName(),
                         project, this.node));
