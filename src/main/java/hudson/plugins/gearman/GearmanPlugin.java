@@ -18,30 +18,26 @@
 
 package hudson.plugins.gearman;
 
-import java.util.List;
-import java.util.Stack;
-
-import hudson.Launcher;
 import hudson.Extension;
-import hudson.model.Build;
+import hudson.Launcher;
 import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
 import hudson.model.Computer;
 import hudson.model.Node;
-import hudson.tasks.Builder;
 import hudson.tasks.BuildStepDescriptor;
+import hudson.tasks.Builder;
 
-import org.apache.commons.lang.StringUtils;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.management.Descriptor;
+import java.util.List;
+import java.util.Stack;
 
 import jenkins.model.Jenkins;
-
 import net.sf.json.JSONObject;
+
+import org.apache.commons.lang.StringUtils;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.StaplerRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * GearmanPlugin {@link Builder}.
@@ -71,26 +67,26 @@ public class GearmanPlugin extends Builder {
 
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
-        
+
         return true;
     }
 
     @Override
     public DescriptorImpl getDescriptor() {
-        
+
         return (DescriptorImpl)super.getDescriptor();
     }
 
     @Extension
     public static final class DescriptorImpl extends
             BuildStepDescriptor<Builder> {
-        
+
         private static final Logger logger = LoggerFactory
                 .getLogger(Constants.PLUGIN_LOGGER_NAME);
         private boolean launchWorker; // launchWorker state (from UI checkbox)
         private String host; // gearman server host
         private int port; // gearman server port
-        private Jenkins jenkins;
+        private final Jenkins jenkins;
 
         // handles to gearman workers
         public static Stack<AbstractWorkerThread> gewtHandles;
@@ -170,10 +166,11 @@ public class GearmanPlugin extends Builder {
              */
             List<Node> nodes = jenkins.getNodes();
 
+
             if (launchWorker && !nodes.isEmpty()) {
 
                 AbstractWorkerThread gwt = null;
-
+                // executor threads for slave nodes
                 for (Node node : nodes) {
                     Computer c = node.toComputer();
                     if (c.isOnline()) {
@@ -189,6 +186,23 @@ public class GearmanPlugin extends Builder {
                         }
                     }
                 }
+                // executor threads for master node
+                Computer masterComp = Computer.currentComputer();
+                Node masterNode = masterComp.getNode();
+                Computer c = masterNode.toComputer();
+                if (c.isOnline()) {
+                    int numExecutors = c.getExecutors().size();
+                    for (int i=0; i<numExecutors; i++) {
+
+                        // create a gearman executor for the jenkins master
+                        gwt = new ExecutorWorkerThread(host, port,
+                                "master-exec"+Integer.toString(i), masterNode);
+                        gwt.registerJobs();
+                        gwt.start();
+                        gewtHandles.push(gwt);
+                    }
+                }
+
 
                 /*
                  * Create one additional worker as a management node. This

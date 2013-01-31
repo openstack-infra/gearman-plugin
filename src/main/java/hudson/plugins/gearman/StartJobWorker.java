@@ -19,20 +19,19 @@
 
 package hudson.plugins.gearman;
 
+import hudson.model.Action;
+import hudson.model.ParameterValue;
+import hudson.model.Cause;
+import hudson.model.Node;
+import hudson.model.Project;
+import hudson.model.StringParameterValue;
+
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-
-import hudson.model.Cause;
-import hudson.model.Node;
-import hudson.model.Action;
-import hudson.model.ParameterValue;
-import hudson.model.Project;
-import hudson.model.StringParameterValue;
 
 import org.gearman.client.GearmanJobResult;
 import org.gearman.client.GearmanJobResultImpl;
@@ -115,7 +114,14 @@ public class StartJobWorker extends AbstractGearmanFunction {
                 + " with UUID " + uuid + " and build params " + buildParams);
 
         // create action to run on a specified node
-        Action runNode = new NodeAssignmentAction(node.getNodeName());
+        Action runNode = null;
+        if (node.getNodeName().isEmpty()) { // master node name is ""
+            runNode = new NodeAssignmentAction("master");
+
+        } else {
+            runNode = new NodeAssignmentAction(node.getNodeName());
+        }
+
         // create action for parameters
         Action params = new NodeParametersAction(buildParams, uuid);
         Action [] actions = {runNode, params};
