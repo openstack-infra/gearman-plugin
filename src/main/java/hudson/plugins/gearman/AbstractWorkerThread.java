@@ -44,7 +44,7 @@ public abstract class AbstractWorkerThread implements Runnable {
     protected int port;
     protected String name;
     protected GearmanWorker worker;
-    private GearmanNIOJobServerConnection conn;
+    private final GearmanNIOJobServerConnection conn;
     private Thread thread;
 
 
@@ -85,7 +85,6 @@ public abstract class AbstractWorkerThread implements Runnable {
         if (worker.isRunning()) {
             logger.info("Stopping " + name + " (" + new Date().toString() + ")");
             worker.stop();
-            logger.info("Stopped " + name + " (" + new Date().toString() + ")");
         }
 
         thread.interrupt();
@@ -97,7 +96,6 @@ public abstract class AbstractWorkerThread implements Runnable {
         } catch (InterruptedException ex) {
             // Unexpected interruption
             ex.printStackTrace();
-            System.exit(1);
         }
 
 
@@ -117,20 +115,7 @@ public abstract class AbstractWorkerThread implements Runnable {
             worker.work();
         }
 
-        while (!Thread.interrupted()) {
-
-            // Running the Gearman Worker
-            logger.info("Running Worker "+ name +" ("+new Date().toString()+")");
-
-            try {
-                Thread.sleep(5000);
-            } catch(InterruptedException ex) {
-                Thread.currentThread().interrupt();
-            }
-
-        }
-
-        logger.info("Thread Stopped" + " (" + new Date().toString() + ")");
+        logger.info("Stopped worker" + name + " (" + new Date().toString() + ")");
 
         // Thread exits
     }
