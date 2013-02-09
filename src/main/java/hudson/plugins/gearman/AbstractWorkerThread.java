@@ -19,6 +19,7 @@
 package hudson.plugins.gearman;
 
 import java.util.Date;
+import java.util.UUID;
 
 import org.gearman.common.GearmanNIOJobServerConnection;
 import org.gearman.worker.GearmanWorker;
@@ -46,16 +47,53 @@ public abstract class AbstractWorkerThread implements Runnable {
     protected GearmanWorker worker;
     private final GearmanNIOJobServerConnection conn;
     private Thread thread;
+    private UUID id;
 
+    public AbstractWorkerThread(String host, int port) {
+        this(host, port, DEFAULT_EXECUTOR_NAME);
+    }
 
     public AbstractWorkerThread(String host, int port, String name) {
-        this.name = name;
-        this.host = host;
-        this.port = port;
+        setHost(host);
+        setPort(port);
+        setName(name);
+        setId(UUID.randomUUID());
         worker = new GearmanWorkerImpl();
         conn = new GearmanNIOJobServerConnection(host, port);
-
     }
+
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
 
     /*
      * Register jobs with the gearman worker.
@@ -83,7 +121,8 @@ public abstract class AbstractWorkerThread implements Runnable {
 
 
         if (worker.isRunning()) {
-            logger.info("Stopping " + name + " (" + new Date().toString() + ")");
+            logger.info("Stopping " + getName() + ":" + getId().toString() +
+                    " (" + new Date().toString() + ")");
             worker.stop();
         }
 
@@ -109,13 +148,12 @@ public abstract class AbstractWorkerThread implements Runnable {
     public void run() {
 
         if (!worker.isRunning()) {
-            logger.info("Starting Worker "+ name +" ("+new Date().toString()+")");
+            logger.info("Starting Worker "+ getName() + ":" + getId().toString() +
+                    " ("+new Date().toString()+")");
             worker.setWorkerID(name);
             worker.addServer(conn);
             worker.work();
         }
-
-        logger.info("Stopped worker" + name + " (" + new Date().toString() + ")");
 
         // Thread exits
     }

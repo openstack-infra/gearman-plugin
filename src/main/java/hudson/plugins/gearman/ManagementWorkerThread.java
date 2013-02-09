@@ -34,6 +34,10 @@ public class ManagementWorkerThread extends AbstractWorkerThread{
     private static final Logger logger = LoggerFactory
             .getLogger(AbstractWorkerThread.class);
 
+    public ManagementWorkerThread(String host, int port){
+        super(host, port);
+    }
+
     public ManagementWorkerThread(String host, int port, String name){
         super(host, port, name);
     }
