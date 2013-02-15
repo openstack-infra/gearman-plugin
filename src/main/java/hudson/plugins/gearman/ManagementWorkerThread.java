@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * This is a thread to run gearman management workers
+ * This is a thread to run gearman management worker
  *
  * @author Khai Do
  */
@@ -33,7 +33,6 @@ public class ManagementWorkerThread extends AbstractWorkerThread{
 
     private static final Logger logger = LoggerFactory
             .getLogger(AbstractWorkerThread.class);
-    private Thread thread;
 
     public ManagementWorkerThread(String host, int port, String name){
         super(host, port, name);
@@ -49,7 +48,7 @@ public class ManagementWorkerThread extends AbstractWorkerThread{
     @Override
     public void registerJobs(){
         String jobFunctionName = "stop:"+host;
-        System.out.println("Registering job "+jobFunctionName+" on "+host);
+        logger.info("Registering job "+jobFunctionName+" on "+host);
         worker.registerFunctionFactory(new DefaultGearmanFunctionFactory(jobFunctionName,
                 StopJobWorker.class.getName()));
 

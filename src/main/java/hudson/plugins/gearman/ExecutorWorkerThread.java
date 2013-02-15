@@ -18,9 +18,9 @@
 
 package hudson.plugins.gearman;
 
+import hudson.model.AbstractProject;
 import hudson.model.Label;
 import hudson.model.Node;
-import hudson.model.Project;
 
 import java.util.HashSet;
 import java.util.List;
@@ -34,8 +34,11 @@ import org.slf4j.LoggerFactory;
 
 
 /*
- * This is thread to run gearman executors
+ * This is the thread to run gearman executors
  * Executors are used to initiate jenkins builds
+ *
+ * @author Khai Do
+ *
  */
 public class ExecutorWorkerThread extends AbstractWorkerThread{
 
@@ -49,31 +52,6 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
         super(host, port, name);
         this.node = node;
     }
-
-    /**
-     * This function finds the node with the corresponding node name Returns the
-     * node if found, otherwise returns null
-     *
-     * @param name
-     *      The name of the jenkins node.
-     * @return
-     *      The jenkins node if found, otherwise null
-     */
-    private Node findNode(String nodeName){
-
-        Jenkins jenkins = Jenkins.getInstance();
-        List<Node> nodes = jenkins.getNodes();
-        Node myNode = null;
-
-        for (Node node : nodes) {
-            if (node.getNodeName().equals(nodeName)){
-                myNode = node;
-            }
-        }
-
-        return myNode;
-    }
-
 
     /**
      * This function tokenizes the labels in a label string
@@ -100,7 +78,6 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
 
         if (label != null) {
 
-            // String projectLabelString = label.getExpression();
             Scanner slabel = new Scanner(label);
             try {
                 slabel.useDelimiter(pattern);
@@ -118,14 +95,14 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
 
     /**
      * Register gearman functions on this node.  This will unregister all
-     * functions before registering new functions.
+     * functions before registering new functions.  Works for free-style
+     * and maven projects but does not work for multi-config projects
      *
      * How functions are registered:
      *  - If the project has no label then we register the project with all
      *      nodes
      *
      *      build:pep8 on precise-123
-     *      build:pep8 on precise-129
      *      build:pep8 on oneiric-456
      *
      *  - If the project contains one label then we register with the node
@@ -133,16 +110,21 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
      *      considered just one label
      *
      *      build:pep8:precise on precise-123
+     *      build:pep8 on precise-123
      *      build:pep8:precise on precise-129
-     *      build:pep8:precise on precise-134
+     *      build:pep8 on precise-129
      *
-     *  - If the project contains multiple labels seperated by '||' then
+     *  - If the project contains multiple labels separated by '||' then
      *      we register with the nodes that contain the corresponding labels
      *
      *      build:pep8:precise on precise-123
+     *      build:pep8 on precise-123
      *      build:pep8:precise on precise-129
+     *      build:pep8 on precise-129
      *      build:pep8:oneiric on oneiric-456
+     *      build:pep8 on oneiric-456
      *      build:pep8:oneiric on oneiric-459
+     *      build:pep8 on oneiric-459
      *
      */
     @Override
@@ -160,11 +142,8 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
          */
         Jenkins jenkins = Jenkins.getInstance();
 
-        List<Project> allProjects = jenkins.getProjects();
-        // this call dies with NPE if there is a project without any labels
-        // List<AbstractProject> projects =
-        // jenkins.getAllItems(AbstractProject.class);
-        for (Project<?, ?> project : allProjects) {
+        List<AbstractProject> allProjects = jenkins.getAllItems(AbstractProject.class);
+        for (AbstractProject<?, ?> project : allProjects) {
 
             if (project.isDisabled()) { // ignore all disabled projects
                 continue;
@@ -182,8 +161,8 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
                         jobFunctionName, StartJobWorker.class.getName(),
                         project, this.node));
 
-            } else { // register "build:projectName:nodeName" on the
-                    // node that has a matching label
+            } else { // register "build:$projectName:$projectLabel" if this
+                    // node matches a node from the project label
 
                 Set<Node> projectLabelNodes = label.getNodes();
                 String projectLabelString = label.getExpression();
@@ -197,9 +176,15 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
                                 + ":" + projectLabel;
                         logger.info("Registering job " + jobFunctionName
                                 + " on " + this.node.getNodeName());
+                        // register with label (i.e. "build:$projectName:$projectLabel")
                         worker.registerFunctionFactory(new CustomGearmanFunctionFactory(
                                 jobFunctionName, StartJobWorker.class
                                         .getName(), project, this.node));
+                        // also register without label (i.e. "build:$projectName")
+                        worker.registerFunctionFactory(new CustomGearmanFunctionFactory(
+                                "build:" + projectName, StartJobWorker.class
+                                        .getName(), project, this.node));
+
                     }
                 }
             }

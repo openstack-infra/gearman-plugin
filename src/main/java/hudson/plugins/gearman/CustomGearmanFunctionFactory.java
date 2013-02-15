@@ -26,6 +26,7 @@
 
 package hudson.plugins.gearman;
 
+import hudson.model.AbstractProject;
 import hudson.model.Node;
 import hudson.model.Project;
 
@@ -38,7 +39,7 @@ import org.slf4j.LoggerFactory;
 
 public class CustomGearmanFunctionFactory extends DefaultGearmanFunctionFactory {
 
-    private final Project<?,?> project;
+    private final AbstractProject<?,?> project;
     private final Node node;
     private final String theClass;
 
@@ -46,7 +47,7 @@ public class CustomGearmanFunctionFactory extends DefaultGearmanFunctionFactory 
             Constants.GEARMAN_WORKER_LOGGER_NAME);
 
     public CustomGearmanFunctionFactory(String functionName, String className,
-            Project<?,?> project, Node node) {
+            AbstractProject<?,?> project, Node node) {
         super(functionName, className);
         this.theClass = className;
         this.project = project;
@@ -62,7 +63,7 @@ public class CustomGearmanFunctionFactory extends DefaultGearmanFunctionFactory 
 
 
 
-    private static GearmanFunction createFunctionInstance(String className, Project<?,?> project, Node node) {
+    private static GearmanFunction createFunctionInstance(String className, AbstractProject<?,?> project, Node node) {
 
         GearmanFunction f = null;
         try {
