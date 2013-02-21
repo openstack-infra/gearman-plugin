@@ -19,13 +19,11 @@
 
 package hudson.plugins.gearman;
 
+import hudson.model.AbstractBuild;
 import hudson.model.Computer;
 import hudson.model.Executor;
-import hudson.model.Label;
 import hudson.model.Node;
 import hudson.model.Queue;
-import hudson.model.Queue.Executable;
-import hudson.model.queue.SubTask;
 
 import java.io.UnsupportedEncodingException;
 import java.util.List;
@@ -44,7 +42,6 @@ import com.google.gson.reflect.TypeToken;
 
 /**
  * This is a gearman function that will cancel/abort jenkins builds
- *
  *
  * @author Khai Do
  */
@@ -80,7 +77,6 @@ public class StopJobWorker extends AbstractGearmanFunction {
         // need to pass on uuid from client.
         // temporarily passing uuid as a build parameter due to
         // issue: https://answers.launchpad.net/gearman-java/+question/218865
-
         String inUuid = null;
         for (Map.Entry<String, String> entry : inParams.entrySet()) {
             if (entry.getKey().equals("uuid")) {
@@ -90,39 +86,44 @@ public class StopJobWorker extends AbstractGearmanFunction {
 
         }
 
-
-        // Cancel jenkins jobs that contain matching uuid from client
-
-        boolean jobResult = cancelBuild(inUuid);
-        String jobResultMsg = null;
-        if (jobResult){
-            jobResultMsg = "Canceled jenkins build " + inUuid;
-
-        } else {
-            jobResultMsg = "Could not cancel build " + inUuid;
-
+        boolean abortResult = false;
+        if (inUuid != null) {
+            // Abort running jenkins build that contain matching uuid
+            abortResult = abortBuild(inUuid);
         }
 
+        //TODO: build might be on gearman queue if it's not currently
+        // running by jenkins, need to check the gearman queue for the
+        // job and remove it.
+
+        String jobResultMsg = "";
+        String jobResultEx = "";
+        boolean jobResult = true;
+        if (abortResult){
+            jobResultMsg = "Canceled jenkins build " + inUuid;
+        } else {
+            jobResultMsg = "Did not cancel jenkins build " + inUuid;
+            jobResultEx = "Could not cancel build " + inUuid;
+        }
 
         GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, jobResult,
-                jobResultMsg.getBytes(), new byte[0], new byte[0], 0, 0);
+                jobResultMsg.getBytes(), new byte[0], jobResultEx.getBytes(), 0, 0);
         return gjr;
     }
 
     /**
      * Function to cancel a jenkins build from the jenkins queue
      *
-     * @param id
-     *      The build Id
+     * @param uuid
+     *      The build uuid
      * @return
      *      true if build was cancel, otherwise false
      */
-    private boolean cancelBuild (String id) {
+    private boolean cancelBuild (String uuid) {
 
-        // Cancel jenkins job from the jenkins queue
         Queue queue = Jenkins.getInstance().getQueue();
 
-        if (id.isEmpty() || id == null){ // error checking
+        if (uuid.isEmpty() || uuid == null){    //NOOP
             return false;
         }
 
@@ -130,6 +131,7 @@ public class StopJobWorker extends AbstractGearmanFunction {
             return false;
         }
 
+        // locate the build with matching uuid
         Queue.Item[] qItems = queue.getItems();
         for (Queue.Item qi : qItems) {
             List<NodeParametersAction> actions = qi
@@ -139,7 +141,8 @@ public class StopJobWorker extends AbstractGearmanFunction {
 
                 String jenkinsJobId = gpa.getUuid();
 
-                if (jenkinsJobId.equals(id)) {
+                if (jenkinsJobId.equals(uuid)) {
+                    // Cancel jenkins job from the jenkins queue
                     logger.info("---- Cancelling Jenkins build " + jenkinsJobId
                             + " -------");
                     return queue.cancel(qi);
@@ -150,62 +153,97 @@ public class StopJobWorker extends AbstractGearmanFunction {
     }
 
     /**
-     * Function to abort a running jenkins build
+     * Function to abort a currently running Jenkins build
+     * Running Jenkins builds are builds that actively being
+     * executed by Jenkins
      *
-     * @param id
-     *      The build Id
+     * @param uuid
+     *      The build UUID
      * @return
      *      true if build was aborted, otherwise false
      */
-    private boolean abortBuild (String id) {
+    private boolean abortBuild (String uuid) {
 
-        if (id.isEmpty() || id == null){ // error checking
+        if (uuid.isEmpty() || uuid == null){ //NOOP
             return false;
         }
 
-
         /*
-         * iterate over the executors on all the nodes then find the build
-         * on that executor with the specified id.
-         *
-         * I'm able to iterate across the executors but not able to get
-         * the build object from the executor to lookup the id parameter value
+         * iterate over the executors on master and slave nodes to find the
+         * build on the executor with the matching uuid
          */
+        // look at executors on master
+        Node masterNode = Computer.currentComputer().getNode();
+        Computer masterComp = masterNode.toComputer();
+        if (!masterComp.isIdle()) { // ignore idle master
+            List<Executor> masterExecutors = masterComp.getExecutors();
+            for (Executor executor: masterExecutors) {
 
-        // abort running jenkins job
+                if (executor.isIdle()) {    // ignore idle executors
+                    continue;
+                }
+
+                // lookup the running build with matching uuid
+                Queue.Executable executable = executor.getCurrentExecutable();
+                AbstractBuild<?, ?> currBuild = (AbstractBuild) executable;
+                int buildNum = currBuild.getNumber();
+                String buildId = currBuild.getId();
+                String runNodeName = currBuild.getBuiltOn().getNodeName();
+                NodeParametersAction param = currBuild.getAction(NodeParametersAction.class);
+                String buildParams = param.getParameters().toString();
+
+                if (param.getUuid().equals(uuid)) {
+
+                    logger.info("Aborting build : "+buildNum+": "+buildId+" on " + runNodeName
+                            +" with UUID " + uuid + " and build params " + buildParams);
+
+                    // abort the running jenkins build
+                    if (!executor.isInterrupted()) {
+                        executor.interrupt();
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // look at executors on slave nodes
         List<Node> nodes = Jenkins.getInstance().getNodes();
-
-        if (nodes.isEmpty()) {
+        if (nodes.isEmpty()) {  //NOOP
             return false;
         }
 
         for (Node node: nodes){
 
-            Computer computer = node.toComputer();
-            if (computer.isIdle()) { // ignore all idle slaves
+            Computer slave = node.toComputer();
+            if (slave.isIdle()) { // ignore all idle slaves
                 continue;
             }
 
-            List<Executor> executors = computer.getExecutors();
-
+            List<Executor> executors = slave.getExecutors();
             for (Executor executor: executors) {
 
-                if (executor.isIdle()) {
+                if (executor.isIdle()) {    // ignore idle executors
                     continue;
                 }
 
-                // lookup the running build with the id
-                Executable executable = executor.getCurrentExecutable();
-                SubTask subtask = executable.getParent();
-                Label label = subtask.getAssignedLabel();
-                List<NodeParametersAction> params = label.getActions(NodeParametersAction.class);
+                // lookup the running build with matching uuid
+                Queue.Executable executable = executor.getCurrentExecutable();
+                AbstractBuild<?, ?> currBuild = (AbstractBuild) executable;
+                int buildNum = currBuild.getNumber();
+                String buildId = currBuild.getId();
+                String runNodeName = currBuild.getBuiltOn().getNodeName();
+                NodeParametersAction param = currBuild.getAction(NodeParametersAction.class);
+                String buildParams = param.getParameters().toString();
 
-                for (NodeParametersAction param: params){
-                    if (param.getUuid().equals(id)){
+                if (param.getUuid().equals(uuid)) {
+
+                    logger.info("Aborting build : "+buildNum+": "+buildId+" on " + runNodeName
+                            +" with UUID " + uuid + " and build params " + buildParams);
+
+                    // abort the running jenkins build
+                    if (!executor.isInterrupted()) {
                         executor.interrupt();
-                        if (executor.interrupted()){
-                            return true;
-                        }
+                        return true;
                     }
                 }
             }

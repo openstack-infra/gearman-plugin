@@ -29,6 +29,7 @@
 
     <artifactId>gearman-plugin</artifactId>
     <packaging>hpi</packaging>
+    <version>0.0.1</version>
 
     <name>Gearman Plugin</name>
     <url>http://wiki.jenkins-ci.org/display/JENKINS/Gearman+Plugin</url>

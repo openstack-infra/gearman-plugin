@@ -32,7 +32,7 @@ server = '127.0.0.1:4730'
 client = GearmanClient([server])
 function = 'build:pep8:precise'
 build_id = uuid.uuid4().hex
-build_params = {'param1':"red",'param2':"white",'param3':"blue"}
+build_params = {'param1':"red", 'param2':"white", 'param3':"blue"}
 
 # Submit a synchronous job request to the job server
 print 'Sending job ' + build_id + ' to ' + server + ' with params ' + str(build_params)
@@ -40,5 +40,6 @@ request = client.submit_job(function,
                             simplejson.dumps(build_params),
                             poll_timeout=60,
                             unique=build_id)
+
 
 print request.result
