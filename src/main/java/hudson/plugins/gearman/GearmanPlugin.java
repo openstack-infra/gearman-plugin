@@ -34,6 +34,8 @@ import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 
 import org.apache.commons.lang.StringUtils;
+import org.gearman.common.GearmanNIOJobServerConnection;
+import org.gearman.worker.GearmanWorkerImpl;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 import org.slf4j.Logger;
@@ -127,20 +129,14 @@ public class GearmanPlugin extends Builder {
         public boolean configure(StaplerRequest staplerRequest, JSONObject json)
                 throws FormException {
             launchWorker = json.getBoolean("launchWorker");
-            logger.info("--- DescriptorImpl Configure function ---"
-                    + this.launchWorker());
+            logger.info("--- LaunchWorker = "+ launchWorker);
 
             // set the gearman server host from value in jenkins config page
             try {
                 host = json.getString("host");
             } catch (Exception e) {
-                throw new RuntimeException(
-                        "Error getting the gearman host name");
+                throw new RuntimeException("Error getting the gearman host name");
             }
-
-            // user input verification
-            if (StringUtils.isEmpty(host) || StringUtils.isBlank(host))
-                throw new RuntimeException("Invalid gearman host name");
 
             // set the gearman server port from value in jenkins config page
             try {
@@ -149,53 +145,68 @@ public class GearmanPlugin extends Builder {
                 throw new RuntimeException("Invalid gearman port value");
             }
 
-            // i believe gearman already checks for port range, just want to do
-            // basic verification here
-            if (port <= 0)
-                throw new RuntimeException("Invalid gearman port value");
-
-            logger.info("--- DescriptorImpl Configure function ---"
-                    + this.getHost());
-            logger.info("--- DescriptorImpl Configure function ---"
-                    + this.getPort());
-
             /*
              * Purpose here is to create a 1:1 mapping of 'gearman
              * worker':'jenkins executor' then use the gearman worker to execute
              * builds on that jenkins nodes
              */
-            List<Node> nodes = jenkins.getNodes();
+            if (launchWorker && gmwtHandles.isEmpty() && gewtHandles.isEmpty()) {
 
+                // user input verification
+                if (StringUtils.isEmpty(host) || StringUtils.isBlank(host))
+                    throw new RuntimeException("Invalid gearman host name");
 
-            if (launchWorker && !nodes.isEmpty()) {
+                // i believe gearman already checks for port range, just want to do
+                // basic verification here
+                if (port <= 0)
+                    throw new RuntimeException("Invalid gearman port value");
 
-                AbstractWorkerThread gwt = null;
-                // executor threads for slave nodes
-                for (Node node : nodes) {
-                    Computer c = node.toComputer();
-                    if (c.isOnline()) {
-                        int numExecutors = c.getExecutors().size();
-                        for (int i=0; i<numExecutors; i++) {
+                logger.info("--- Hostname = "+ this.getHost());
+                logger.info("--- Port = "+ this.getPort());
 
-                            // create a gearman executor for every jenkins executor
-                            gwt = new ExecutorWorkerThread(host, port,
-                                    node.getNodeName()+"-exec"+Integer.toString(i), node);
-                            gwt.registerJobs();
-                            gwt.start();
-                            gewtHandles.push(gwt);
-                        }
-                    }
+                // check for a valid connection to gearman server
+                logger.info("--- Check connection to Gearman Server "+host+":"+port);
+                boolean validConn = new GearmanWorkerImpl().addServer(
+                            new GearmanNIOJobServerConnection(host, port));
+                if (!validConn) {
+                    logger.info("--- Could not get connection to Gearman Server "+host+":"+port);
+                    this.launchWorker = false;  // will not spawn any workers, disable flag because
+                    throw new RuntimeException("Could not get connection to Gearman Server " +
+                            host+":"+port);
                 }
-                // executor threads for master node
-                Computer masterComp = Computer.currentComputer();
-                Node masterNode = masterComp.getNode();
-                Computer c = masterNode.toComputer();
-                if (c.isOnline()) {
-                    int numExecutors = c.getExecutors().size();
-                    for (int i=0; i<numExecutors; i++) {
 
-                        // create a gearman executor for the jenkins master
-                        gwt = new ExecutorWorkerThread(host, port,
+                /*
+                 * Spawn management executor.  This worker does not need any
+                 * executors.  It only needs to work with gearman.
+                 */
+                AbstractWorkerThread gwt = null;
+                gwt = new ManagementWorkerThread(host, port, host);
+                gwt.registerJobs();
+                gwt.start();
+                gmwtHandles.push(gwt);
+
+                /*
+                 * Spawn executors for the jenkins master
+                 * Need to treat the master differently than slaves because
+                 * the master is not the same as a slave
+                 */
+                // make sure master is enabled (or has executors)
+                Node masterNode = null;
+                try {
+                    masterNode = Computer.currentComputer().getNode();
+                } catch (NullPointerException npe) {
+                    logger.info("--- Master is offline");
+                } catch (Exception e) {
+                    logger.info("--- Can't get Master");
+                    e.printStackTrace();
+                }
+
+                if (masterNode != null) {
+                    Computer computer = masterNode.toComputer();
+                    int executors = computer.getExecutors().size();
+                    for (int i=0; i<executors; i++) {
+                        // create a gearman executor for every jenkins executor
+                        gwt  = new ExecutorWorkerThread(host, port,
                                 "master-exec"+Integer.toString(i), masterNode);
                         gwt.registerJobs();
                         gwt.start();
@@ -203,30 +214,40 @@ public class GearmanPlugin extends Builder {
                     }
                 }
 
-
                 /*
-                 * Create one additional worker as a management node. This
-                 * worker will be used to abort builds.
+                 * Spawn executors for the jenkins slaves
                  */
-                if (!gewtHandles.isEmpty()) {
-                    gwt = new ManagementWorkerThread(host, port, host);
-                    gwt.registerJobs();
-                    gwt.start();
-                    gmwtHandles.push(gwt);
-
-                }
-
-            } else if (!launchWorker) { // stop worker threads
-                while (!gewtHandles.isEmpty()) { // stop executors
-                    AbstractWorkerThread task = gewtHandles.pop();
-                    task.stop();
-                }
-                while (!gmwtHandles.isEmpty()) { // stop management
-                    AbstractWorkerThread task = gmwtHandles.pop();
-                    task.stop();
+                List<Node> nodes = jenkins.getNodes();
+                if (!nodes.isEmpty()) {
+                    for (Node node : nodes) {
+                        Computer computer = node.toComputer();
+                        if (computer.isOnline()) {
+                            // create a gearman executor for every jenkins executor
+                            int slaveExecutors = computer.getExecutors().size();
+                            for (int i=0; i<slaveExecutors; i++) {
+                                gwt  = new ExecutorWorkerThread(host, port,
+                                        node.getNodeName()+"-exec"+Integer.toString(i), node);
+                                gwt.registerJobs();
+                                gwt.start();
+                                gewtHandles.push(gwt);
+                            }
+                        }
+                    }
                 }
             }
 
+            //stop gearman workers
+            if (!launchWorker) {
+                while (!gewtHandles.isEmpty()) { // stop executors
+                    gewtHandles.pop().stop();
+                }
+                while (!gmwtHandles.isEmpty()) { // stop management
+                    gmwtHandles.pop().stop();
+                }
+            }
+
+            int runningExecutors = gmwtHandles.size()+gewtHandles.size();
+            logger.info("--- Num of executors running = "+runningExecutors);
             save();
             return true;
         }
