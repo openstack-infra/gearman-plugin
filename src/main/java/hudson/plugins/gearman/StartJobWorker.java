@@ -21,9 +21,13 @@ package hudson.plugins.gearman;
 
 import hudson.model.Action;
 import hudson.model.ParameterValue;
+import hudson.model.Result;
+import hudson.model.AbstractBuild;
 import hudson.model.Cause;
 import hudson.model.Node;
 import hudson.model.Project;
+import hudson.model.Queue;
+import hudson.model.Queue.Executable;
 import hudson.model.StringParameterValue;
 
 import java.io.UnsupportedEncodingException;
@@ -108,46 +112,70 @@ public class StartJobWorker extends AbstractGearmanFunction {
 
         }
 
-        // schedule the jenkins build
-        logger.info("Scheduling "+project.getName()+" build #" +
-                project.getNextBuildNumber()+" on " + node.getNodeName()
-                + " with UUID " + uuid + " and build params " + buildParams);
-
-        // create action to run on a specified node
-        Action runNode = null;
-        if (node.getNodeName().isEmpty()) { // master node name is ""
-            runNode = new NodeAssignmentAction("master");
-
-        } else {
-            runNode = new NodeAssignmentAction(node.getNodeName());
+        // set the name of the node to execute build
+        String runNodeName = node.getNodeName();
+        if (runNodeName.isEmpty()) { // master node name is ""
+            runNodeName = "master";
         }
 
+        // create action to run on a specified node
+        Action runNode = new NodeAssignmentAction(runNodeName);
         // create action for parameters
         Action params = new NodeParametersAction(buildParams, uuid);
         Action [] actions = {runNode, params};
 
+        logger.info("Scheduling "+project.getName()+" build #" +
+                project.getNextBuildNumber()+" on " + runNodeName
+                + " with UUID " + uuid + " and build params " + buildParams);
+
         Future<?> future = project.scheduleBuild2(0, new Cause.UserIdCause(), actions);
 
-
+        String jobException = "";
         String jobResultMsg = "";
-        boolean jobResult = false;
+
+        // jobResult does not change otherwise no results are returned:
+        // https://answers.launchpad.net/gearman-java/+question/221348
+        boolean jobResult = true;
 
         try {
-            future.get();
-            jobResult = true;
-            jobResultMsg = "Build completed on " + node.getNodeName()
-                    + " with UUID " + uuid + " and build params " + buildParams;
-        } catch (InterruptedException e1) {
-            // TODO Auto-generated catch block
-            jobResultMsg = "Build interrupted on " + node.getNodeName();
-            e1.printStackTrace();
-        } catch (ExecutionException e1) {
-            // TODO Auto-generated catch block
-            jobResultMsg = "Build failed on " + node.getNodeName();
+            // wait for jenkins build to complete
+            Queue.Executable exec = (Executable) future.get();
+
+            // check Jenkins build results
+            AbstractBuild<?, ?> currBuild = (AbstractBuild<?, ?>) exec;
+            String buildId = currBuild.getId();
+            int buildNum = currBuild.number;
+            Result result = currBuild.getResult();
+            if (result == Result.SUCCESS) {
+                jobResultMsg = "Build Success : "+buildNum+": "+buildId+" on " + runNodeName
+                        + " with UUID " + uuid + " and build params " + buildParams;
+            } else if (result == Result.ABORTED) {
+                jobResultMsg = "Build Aborted : "+buildNum+": "+buildId+" on " + runNodeName
+                        + " with UUID " + uuid + " and build params " + buildParams;
+                jobException = jobResultMsg;
+            } else if (result == Result.UNSTABLE) {
+                jobResultMsg = "Build Unstable : "+buildNum+": "+buildId+" on " + runNodeName
+                        + " with UUID " + uuid + " and build params " + buildParams;
+                jobException = jobResultMsg;
+            } else if (result == Result.FAILURE) {
+                jobResultMsg = "Build failed : "+buildNum+": "+buildId+" on " + runNodeName
+                        + " with UUID " + uuid + " and build params " + buildParams;
+                jobException = jobResultMsg;
+            } else if (result == Result.NOT_BUILT) {
+                jobResultMsg = "Build not done : "+buildNum+": "+buildId+" on " + runNodeName
+                        + " with UUID " + uuid + " and build params " + buildParams;
+                jobException = jobResultMsg;
+            }
+
+        } catch (InterruptedException e) {
+            jobException = e.getMessage();
+        } catch (ExecutionException e) {
+            jobException = e.getMessage();
         }
 
+        // return result to client
         GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, jobResult,
-                jobResultMsg.getBytes(), new byte[0], new byte[0], 0, 0);
+                jobResultMsg.getBytes(), new byte[0], jobException.getBytes(), 0, 0);
         return gjr;
     }
 }
