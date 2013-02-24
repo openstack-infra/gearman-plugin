@@ -24,6 +24,7 @@ package hudson.plugins.gearman;
 public interface Constants {
     /* Defines. */
 
+    public static final boolean GEARMAN_DEFAULT_LAUNCH_WORKER = false;
     public static final String GEARMAN_DEFAULT_TCP_HOST = "127.0.0.1";
     public static final int GEARMAN_DEFAULT_TCP_PORT = 4730;
 

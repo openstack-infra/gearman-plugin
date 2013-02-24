@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>1.460</version><!-- which version of Jenkins is this plugin built against? -->
+        <version>1.502</version><!-- which version of Jenkins is this plugin built against? -->
     </parent>
 
     <artifactId>gearman-plugin</artifactId>
