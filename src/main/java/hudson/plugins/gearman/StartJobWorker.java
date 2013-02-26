@@ -77,42 +77,42 @@ public class StartJobWorker extends AbstractGearmanFunction {
     public GearmanJobResult executeFunction() {
         logger.info("----- Running executeFunction in " + name + " ----");
 
-        // decode the data from the client
-        String decoded = null;
-        try {
-            decoded = new String((byte[]) this.data, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+        // decode the uniqueId from the client
+        String decodedUniqueId = null;
+        if (this.uniqueId != null) {
+            try {
+                decodedUniqueId = new String(this.uniqueId, "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
         }
-
-        // convert parameters passed in from client to hash map
-        Gson gson = new Gson();
-        Map<String, String> inParams = gson.fromJson(decoded,
-                new TypeToken<Map<String, String>>() {
-                }.getType());
-
-        // need to pass on uuid from client.
-        // temporarily passing uuid as a build parameter due to
-        // issue: https://answers.launchpad.net/gearman-java/+question/218865
-
-        /*
-         * make this node build this project with build params from the client
-         */
 
         // create new parameter objects to pass to jenkins build
         List<ParameterValue> buildParams = new ArrayList<ParameterValue>();
-        String uuid = null;
-        // create the build parameters that were passed in from client
-        for (Map.Entry<String, String> entry : inParams.entrySet()) {
-            buildParams.add(new StringParameterValue(entry.getKey(), entry.getValue()));
-            // get the build id for debugging
-            if (entry.getKey().equals("uuid")) {
-                uuid = entry.getValue();
+        String decodedData = null;
+        if (this.data != null) {
+            // decode the data from the client
+            try {
+                decodedData = new String((byte[]) this.data, "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
             }
-
+            // convert parameters passed in from client to hash map
+            Gson gson = new Gson();
+            Map<String, String> inParams = gson.fromJson(decodedData,
+                    new TypeToken<Map<String, String>>() {
+                    }.getType());
+            // set build parameters that were passed in from client
+            for (Map.Entry<String, String> entry : inParams.entrySet()) {
+                buildParams.add(new StringParameterValue(entry.getKey(), entry.getValue()));
+            }
         }
 
-        // set the name of the node to execute build
+        /*
+         * make this node build this project with unique id and build params from the client
+         */
+
+        // set the name of the node to execute build on
         String runNodeName = node.getNodeName();
         if (runNodeName.isEmpty()) { // master node name is ""
             runNodeName = "master";
@@ -121,12 +121,12 @@ public class StartJobWorker extends AbstractGearmanFunction {
         // create action to run on a specified node
         Action runNode = new NodeAssignmentAction(runNodeName);
         // create action for parameters
-        Action params = new NodeParametersAction(buildParams, uuid);
+        Action params = new NodeParametersAction(buildParams, decodedUniqueId);
         Action [] actions = {runNode, params};
 
         logger.info("Scheduling "+project.getName()+" build #" +
                 project.getNextBuildNumber()+" on " + runNodeName
-                + " with UUID " + uuid + " and build params " + buildParams);
+                + " with UUID " + decodedUniqueId + " and build params " + buildParams);
 
         Future<?> future = project.scheduleBuild2(0, new Cause.UserIdCause(), actions);
 
@@ -148,22 +148,22 @@ public class StartJobWorker extends AbstractGearmanFunction {
             Result result = currBuild.getResult();
             if (result == Result.SUCCESS) {
                 jobResultMsg = "Build Success : "+buildNum+": "+buildId+" on " + runNodeName
-                        + " with UUID " + uuid + " and build params " + buildParams;
+                        + " with UUID " + decodedUniqueId + " and build params " + buildParams;
             } else if (result == Result.ABORTED) {
                 jobResultMsg = "Build Aborted : "+buildNum+": "+buildId+" on " + runNodeName
-                        + " with UUID " + uuid + " and build params " + buildParams;
+                        + " with UUID " + decodedUniqueId + " and build params " + buildParams;
                 jobException = jobResultMsg;
             } else if (result == Result.UNSTABLE) {
                 jobResultMsg = "Build Unstable : "+buildNum+": "+buildId+" on " + runNodeName
-                        + " with UUID " + uuid + " and build params " + buildParams;
+                        + " with UUID " + decodedUniqueId + " and build params " + buildParams;
                 jobException = jobResultMsg;
             } else if (result == Result.FAILURE) {
                 jobResultMsg = "Build failed : "+buildNum+": "+buildId+" on " + runNodeName
-                        + " with UUID " + uuid + " and build params " + buildParams;
+                        + " with UUID " + decodedUniqueId + " and build params " + buildParams;
                 jobException = jobResultMsg;
             } else if (result == Result.NOT_BUILT) {
                 jobResultMsg = "Build not done : "+buildNum+": "+buildId+" on " + runNodeName
-                        + " with UUID " + uuid + " and build params " + buildParams;
+                        + " with UUID " + decodedUniqueId + " and build params " + buildParams;
                 jobException = jobResultMsg;
             }
 

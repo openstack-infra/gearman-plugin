@@ -151,6 +151,7 @@ public abstract class AbstractWorkerThread implements Runnable {
             logger.info("Starting Worker "+ getName() + ":" + getId().toString() +
                     " ("+new Date().toString()+")");
             worker.setWorkerID(name);
+            worker.setJobUniqueIdRequired(true);
             worker.addServer(conn);
             worker.work();
         }

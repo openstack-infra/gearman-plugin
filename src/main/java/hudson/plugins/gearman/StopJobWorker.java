@@ -27,7 +27,6 @@ import hudson.model.Queue;
 
 import java.io.UnsupportedEncodingException;
 import java.util.List;
-import java.util.Map;
 
 import jenkins.model.Jenkins;
 
@@ -36,9 +35,6 @@ import org.gearman.client.GearmanJobResultImpl;
 import org.gearman.worker.AbstractGearmanFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 /**
  * This is a gearman function that will cancel/abort jenkins builds
@@ -58,38 +54,20 @@ public class StopJobWorker extends AbstractGearmanFunction {
     @Override
     public GearmanJobResult executeFunction() {
 
-        String decoded = null;
-
-        logger.info("---- Running executeFunction  in " + this.getName()+ " -------");
-
-        try {
-            decoded = new String((byte[]) this.data, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-
-        Gson gson = new Gson();
-        Map<String, String> inParams = gson.fromJson(decoded,
-                new TypeToken<Map<String, String>>() {
-                }.getType());
-
-        // need to pass on uuid from client.
-        // temporarily passing uuid as a build parameter due to
-        // issue: https://answers.launchpad.net/gearman-java/+question/218865
-        String inUuid = null;
-        for (Map.Entry<String, String> entry : inParams.entrySet()) {
-            if (entry.getKey().equals("uuid")) {
-                inUuid = entry.getValue();
-                break;
+        // decode the uniqueId from the client
+        String decodedUniqueId = null;
+        if (this.uniqueId != null) {
+            try {
+                decodedUniqueId = new String(this.uniqueId, "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
             }
-
         }
 
         boolean abortResult = false;
-        if (inUuid != null) {
+        if (decodedUniqueId != null) {
             // Abort running jenkins build that contain matching uuid
-            abortResult = abortBuild(inUuid);
+            abortResult = abortBuild(decodedUniqueId);
         }
 
         //TODO: build might be on gearman queue if it's not currently
@@ -100,10 +78,10 @@ public class StopJobWorker extends AbstractGearmanFunction {
         String jobResultEx = "";
         boolean jobResult = true;
         if (abortResult){
-            jobResultMsg = "Canceled jenkins build " + inUuid;
+            jobResultMsg = "Canceled jenkins build " + decodedUniqueId;
         } else {
-            jobResultMsg = "Did not cancel jenkins build " + inUuid;
-            jobResultEx = "Could not cancel build " + inUuid;
+            jobResultMsg = "Did not cancel jenkins build " + decodedUniqueId;
+            jobResultEx = "Could not cancel build " + decodedUniqueId;
         }
 
         GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, jobResult,
@@ -112,43 +90,17 @@ public class StopJobWorker extends AbstractGearmanFunction {
     }
 
     /**
-     * Function to cancel a jenkins build from the jenkins queue
+     * Function to cancel a Gearman job from the Gearman queue
      *
      * @param uuid
      *      The build uuid
      * @return
-     *      true if build was cancel, otherwise false
+     *      true if job was cancel, otherwise false
      */
-    private boolean cancelBuild (String uuid) {
+    private boolean cancelJob (String uuid) {
 
-        Queue queue = Jenkins.getInstance().getQueue();
-
-        if (uuid.isEmpty() || uuid == null){    //NOOP
-            return false;
-        }
-
-        if (queue.isEmpty()) {  // do nothing if queue is empty
-            return false;
-        }
-
-        // locate the build with matching uuid
-        Queue.Item[] qItems = queue.getItems();
-        for (Queue.Item qi : qItems) {
-            List<NodeParametersAction> actions = qi
-                    .getActions(NodeParametersAction.class);
-
-            for (NodeParametersAction gpa : actions) {
-
-                String jenkinsJobId = gpa.getUuid();
-
-                if (jenkinsJobId.equals(uuid)) {
-                    // Cancel jenkins job from the jenkins queue
-                    logger.info("---- Cancelling Jenkins build " + jenkinsJobId
-                            + " -------");
-                    return queue.cancel(qi);
-                }
-            }
-        }
+        //TODO:  Need to cancel job from gearman queue, not sure how to
+        //      do it yet.
         return false;
     }
 

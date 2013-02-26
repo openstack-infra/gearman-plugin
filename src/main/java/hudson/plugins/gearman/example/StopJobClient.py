@@ -32,12 +32,11 @@ conn = server + ":" + port
 client = GearmanClient([conn])
 function = "stop:" + server
 build_id = uuid.UUID('{5ac10210-0405-0607-4809-1a0b0c0d0e0f}').hex
-build_params = {'uuid':build_id}
 
 # Submit a synchronous job request to the job server
 print 'Sending job ' + function + ' to ' + conn + ' with id ' + build_id
 request = client.submit_job(function,
-                            simplejson.dumps(build_params),
+                            "",
                             poll_timeout=60,
                             unique=build_id)
 
