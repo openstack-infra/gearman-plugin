@@ -29,5 +29,4 @@ public interface Constants {
     public static final int GEARMAN_DEFAULT_TCP_PORT = 4730;
 
     public static final String PLUGIN_LOGGER_NAME = "hudson.plugins.gearman.logger";
-    public static final String PLUGIN_EXECTUOR_LOGGER_NAME = "hudson.plugins.gearman.executor.logger";
 }

@@ -42,8 +42,6 @@ import org.slf4j.LoggerFactory;
  */
 public class ExecutorWorkerThread extends AbstractWorkerThread{
 
-//    private static final Logger logger = LoggerFactory
-//            .getLogger(AbstractWorkerThread.class);
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 

@@ -37,17 +37,17 @@ public class ComputerListenerImpl extends ComputerListener {
 
         // on creation of slave
       int currNumNodes = Jenkins.getInstance().getNodes().size();
-      if (GearmanPluginConfig.numExecutorNodes < currNumNodes) {
+      if (GearmanProxy.numExecutorNodes < currNumNodes) {
           Node node = c.getNode();
           int slaveExecutors = c.getExecutors().size();
           for (int i=0; i<slaveExecutors; i++) {
               AbstractWorkerThread gwt  = new ExecutorWorkerThread("15.185.117.66", 4730,
                       node.getNodeName()+"-exec"+Integer.toString(i), node);
               gwt.start();
-              GearmanPluginConfig.gewtHandles.add(gwt);
+              GearmanProxy.gewtHandles.add(gwt);
           }
-          GearmanPluginConfig.numExecutorNodes = currNumNodes;
-          logger.info("---- numExecutorNodes = "+GearmanPluginConfig.numExecutorNodes);
+          GearmanProxy.numExecutorNodes = currNumNodes;
+          logger.info("---- numExecutorNodes = "+GearmanProxy.numExecutorNodes);
       }
     }
 
@@ -68,7 +68,7 @@ public class ComputerListenerImpl extends ComputerListener {
 
         //TODO: adjust for an update to executors.  Method does not provide the
         // computer to know which thread to remove or add
-        int gearmanWorkers = GearmanPluginConfig.gewtHandles.size();
+        int gearmanWorkers = GearmanProxy.gewtHandles.size();
         int currNumExecutors = Jenkins.getInstance().getNumExecutors();
         if (gearmanWorkers < currNumExecutors) { //executor added
             // spawn a thread for executor
@@ -77,8 +77,8 @@ public class ComputerListenerImpl extends ComputerListener {
 
         }
 
-//        if (!GearmanPluginConfig.gewtHandles.isEmpty()) {
-//            for (AbstractWorkerThread awt: GearmanPluginConfig.gewtHandles) {
+//        if (!GearmanProxy.gewtHandles.isEmpty()) {
+//            for (AbstractWorkerThread awt: GearmanProxy.gewtHandles) {
 //                awt.registerJobs();
 //            }
 //        }
@@ -96,26 +96,26 @@ public class ComputerListenerImpl extends ComputerListener {
 
         // on deletion of slave
         int currNumNodes = Jenkins.getInstance().getNodes().size();
-        if (GearmanPluginConfig.numExecutorNodes > currNumNodes) {
-            if (!GearmanPluginConfig.gewtHandles.isEmpty()) {
-                GearmanPluginConfig.numExecutorNodes--;
-                logger.info("---- numExecutorNodes = "+GearmanPluginConfig.numExecutorNodes);
-                for (AbstractWorkerThread awt: GearmanPluginConfig.gewtHandles) {
+        if (GearmanProxy.numExecutorNodes > currNumNodes) {
+            if (!GearmanProxy.gewtHandles.isEmpty()) {
+                GearmanProxy.numExecutorNodes--;
+                logger.info("---- numExecutorNodes = "+GearmanProxy.numExecutorNodes);
+                for (AbstractWorkerThread awt: GearmanProxy.gewtHandles) {
                     if (awt.name.contains(c.getName())) {
                         try {
                             awt.stop();
                         }catch (Exception e){
                             e.printStackTrace();
                         }
-                        GearmanPluginConfig.gewtHandles.remove(awt);
+                        GearmanProxy.gewtHandles.remove(awt);
                     }
                 }
             }
         }
 
         // on disconnect of node
-        if (!GearmanPluginConfig.gewtHandles.isEmpty()) {
-            for (AbstractWorkerThread awt: GearmanPluginConfig.gewtHandles) {
+        if (!GearmanProxy.gewtHandles.isEmpty()) {
+            for (AbstractWorkerThread awt: GearmanProxy.gewtHandles) {
                 awt.registerJobs();
             }
         }
@@ -132,8 +132,8 @@ public class ComputerListenerImpl extends ComputerListener {
         }
 
         // on re-connection of node
-        if (!GearmanPluginConfig.gewtHandles.isEmpty()) {
-            for (AbstractWorkerThread awt: GearmanPluginConfig.gewtHandles) {
+        if (!GearmanProxy.gewtHandles.isEmpty()) {
+            for (AbstractWorkerThread awt: GearmanProxy.gewtHandles) {
                 awt.registerJobs();
             }
         }
@@ -149,8 +149,8 @@ public class ComputerListenerImpl extends ComputerListener {
             return;
         }
 
-        if (!GearmanPluginConfig.gewtHandles.isEmpty()) {
-            for (AbstractWorkerThread awt: GearmanPluginConfig.gewtHandles) {
+        if (!GearmanProxy.gewtHandles.isEmpty()) {
+            for (AbstractWorkerThread awt: GearmanProxy.gewtHandles) {
                 awt.registerJobs();
             }
         }
@@ -166,8 +166,8 @@ public class ComputerListenerImpl extends ComputerListener {
             return;
         }
 
-        if (!GearmanPluginConfig.gewtHandles.isEmpty()) {
-            for (AbstractWorkerThread awt: GearmanPluginConfig.gewtHandles) {
+        if (!GearmanProxy.gewtHandles.isEmpty()) {
+            for (AbstractWorkerThread awt: GearmanProxy.gewtHandles) {
                 awt.registerJobs();
             }
         }

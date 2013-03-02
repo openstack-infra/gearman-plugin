@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
 public class StopJobWorker extends AbstractGearmanFunction {
 
     private static final Logger logger = LoggerFactory
-            .getLogger(Constants.PLUGIN_EXECTUOR_LOGGER_NAME);
+            .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
 
     /*

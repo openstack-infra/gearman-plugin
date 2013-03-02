@@ -28,8 +28,8 @@ public class ProjectListener extends ItemListener
         }
 
         // update gearman worker functions on existing threads
-        if (!GearmanPluginConfig.gewtHandles.isEmpty()) {
-            for (AbstractWorkerThread awt: GearmanPluginConfig.gewtHandles) {
+        if (!GearmanProxy.gewtHandles.isEmpty()) {
+            for (AbstractWorkerThread awt: GearmanProxy.gewtHandles) {
                 awt.registerJobs();
             }
         }
@@ -45,8 +45,8 @@ public class ProjectListener extends ItemListener
         }
 
         // update gearman worker functions on existing threads
-        if (!GearmanPluginConfig.gewtHandles.isEmpty()) {
-            for (AbstractWorkerThread awt: GearmanPluginConfig.gewtHandles) {
+        if (!GearmanProxy.gewtHandles.isEmpty()) {
+            for (AbstractWorkerThread awt: GearmanProxy.gewtHandles) {
                 awt.registerJobs();
             }
         }
@@ -62,8 +62,8 @@ public class ProjectListener extends ItemListener
         }
 
         // update gearman worker functions on existing threads
-        if (!GearmanPluginConfig.gewtHandles.isEmpty()) {
-            for (AbstractWorkerThread awt: GearmanPluginConfig.gewtHandles) {
+        if (!GearmanProxy.gewtHandles.isEmpty()) {
+            for (AbstractWorkerThread awt: GearmanProxy.gewtHandles) {
                 awt.registerJobs();
             }
         }
@@ -79,8 +79,8 @@ public class ProjectListener extends ItemListener
         }
 
         // update gearman worker functions on existing threads
-        if (!GearmanPluginConfig.gewtHandles.isEmpty()) {
-            for (AbstractWorkerThread awt: GearmanPluginConfig.gewtHandles) {
+        if (!GearmanProxy.gewtHandles.isEmpty()) {
+            for (AbstractWorkerThread awt: GearmanProxy.gewtHandles) {
                 awt.registerJobs();
             }
         }
@@ -96,8 +96,8 @@ public class ProjectListener extends ItemListener
         }
 
         // update gearman worker functions on existing threads
-        if (!GearmanPluginConfig.gewtHandles.isEmpty()) {
-            for (AbstractWorkerThread awt: GearmanPluginConfig.gewtHandles) {
+        if (!GearmanProxy.gewtHandles.isEmpty()) {
+            for (AbstractWorkerThread awt: GearmanProxy.gewtHandles) {
                 awt.registerJobs();
             }
         }

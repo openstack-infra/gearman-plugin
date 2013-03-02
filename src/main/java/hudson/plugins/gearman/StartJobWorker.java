@@ -59,7 +59,7 @@ import com.google.gson.reflect.TypeToken;
 public class StartJobWorker extends AbstractGearmanFunction {
 
     private static final Logger logger = LoggerFactory
-            .getLogger(Constants.PLUGIN_EXECTUOR_LOGGER_NAME);
+            .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
     Node node;
     Project<?, ?> project;
