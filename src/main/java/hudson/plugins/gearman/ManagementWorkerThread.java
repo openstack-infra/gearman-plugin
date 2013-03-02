@@ -31,8 +31,10 @@ import org.slf4j.LoggerFactory;
 
 public class ManagementWorkerThread extends AbstractWorkerThread{
 
+//    private static final Logger logger = LoggerFactory
+//            .getLogger(AbstractWorkerThread.class);
     private static final Logger logger = LoggerFactory
-            .getLogger(AbstractWorkerThread.class);
+            .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
     public ManagementWorkerThread(String host, int port, String name){
         super(host, port, name);

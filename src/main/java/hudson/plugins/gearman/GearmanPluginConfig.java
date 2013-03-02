@@ -51,13 +51,15 @@ public class GearmanPluginConfig extends GlobalConfiguration {
 
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
-    private boolean launchWorker; // launchWorker state (from UI checkbox)
+    public static boolean launchWorker; // launchWorker state (from UI checkbox)
     private String host; // gearman server host
     private int port; // gearman server port
 
     // handles to gearman workers
-    public static Stack<AbstractWorkerThread> gewtHandles;
-    public static Stack<AbstractWorkerThread> gmwtHandles;
+    public static List<AbstractWorkerThread> gewtHandles;
+    public static List<AbstractWorkerThread> gmwtHandles;
+
+    public static int numExecutorNodes;
 
     /**
      * Constructor.
@@ -67,6 +69,7 @@ public class GearmanPluginConfig extends GlobalConfiguration {
 
         gewtHandles = new Stack<AbstractWorkerThread>();
         gmwtHandles = new Stack<AbstractWorkerThread>();
+        numExecutorNodes = 0;
 
         load();
 
@@ -175,7 +178,7 @@ public class GearmanPluginConfig extends GlobalConfiguration {
             gwt = new ManagementWorkerThread(host, port, host);
             gwt.registerJobs();
             gwt.start();
-            gmwtHandles.push(gwt);
+            gmwtHandles.add(gwt);
 
             /*
              * Spawn executors for the jenkins master Need to treat the master
@@ -202,8 +205,9 @@ public class GearmanPluginConfig extends GlobalConfiguration {
                             + Integer.toString(i), masterNode);
                     gwt.registerJobs();
                     gwt.start();
-                    gewtHandles.push(gwt);
+                    gewtHandles.add(gwt);
                 }
+                numExecutorNodes++;
             }
 
             /*
@@ -213,30 +217,33 @@ public class GearmanPluginConfig extends GlobalConfiguration {
             if (!nodes.isEmpty()) {
                 for (Node node : nodes) {
                     Computer computer = node.toComputer();
-                    if (computer.isOnline()) {
-                        // create a gearman worker for every executor on the slave
-                        int slaveExecutors = computer.getExecutors().size();
-                        for (int i = 0; i < slaveExecutors; i++) {
-                            gwt = new ExecutorWorkerThread(host, port,
-                                    node.getNodeName() + "-exec"
-                                            + Integer.toString(i), node);
-                            gwt.registerJobs();
-                            gwt.start();
-                            gewtHandles.push(gwt);
-                        }
+                    // create a gearman worker for every executor on the slave
+                    int slaveExecutors = computer.getExecutors().size();
+                    for (int i = 0; i < slaveExecutors; i++) {
+                        gwt = new ExecutorWorkerThread(host, port,
+                                node.getNodeName() + "-exec"
+                                        + Integer.toString(i), node);
+                        gwt.registerJobs();
+                        gwt.start();
+                        gewtHandles.add(gwt);
                     }
+                    numExecutorNodes++;
                 }
             }
         }
 
         // stop gearman workers
         if (!launchWorker) {
-            while (!gewtHandles.isEmpty()) { // stop executors
-                gewtHandles.pop().stop();
+            for (AbstractWorkerThread gewtHandle : gewtHandles) { // stop executors
+                gewtHandle.stop();
             }
-            while (!gmwtHandles.isEmpty()) { // stop management
-                gmwtHandles.pop().stop();
+            gewtHandles.clear();
+
+            for (AbstractWorkerThread gmwtHandle : gmwtHandles) { // stop executors
+                gmwtHandle.stop();
             }
+            gmwtHandles.clear();
+            numExecutorNodes = 0;
         }
 
         int runningExecutors = gmwtHandles.size() + gewtHandles.size();

@@ -42,8 +42,10 @@ import org.slf4j.LoggerFactory;
  */
 public class ExecutorWorkerThread extends AbstractWorkerThread{
 
+//    private static final Logger logger = LoggerFactory
+//            .getLogger(AbstractWorkerThread.class);
     private static final Logger logger = LoggerFactory
-            .getLogger(AbstractWorkerThread.class);
+            .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
     private final Node node;
 
@@ -142,12 +144,13 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
          */
         worker.unregisterAll();
 
+        if (this.node.toComputer().isOffline()) {
+            return;
+        }
         /*
          * Now register or re-register all functions.
          */
-        Jenkins jenkins = Jenkins.getInstance();
-
-        List<AbstractProject> allProjects = jenkins.getAllItems(AbstractProject.class);
+        List<AbstractProject> allProjects = Jenkins.getInstance().getAllItems(AbstractProject.class);
         for (AbstractProject<?, ?> project : allProjects) {
 
             if (project.isDisabled()) { // ignore all disabled projects
