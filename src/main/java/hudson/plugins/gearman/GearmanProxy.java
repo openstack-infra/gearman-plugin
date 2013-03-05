@@ -16,7 +16,6 @@
  *
  */
 
-
 package hudson.plugins.gearman;
 
 import hudson.model.Computer;
@@ -30,28 +29,44 @@ import jenkins.model.Jenkins;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * This class is used to startup and shutdown the gearman workers.
+ * It is also used to keep gearman plugin state info.
+ *
+ * @author Khai Do
+ */
 public class GearmanProxy {
 
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
-
     // handles to gearman workers
-    public static List<AbstractWorkerThread> gewtHandles;
-    public static List<AbstractWorkerThread> gmwtHandles;
+    private static List<AbstractWorkerThread> gewtHandles;
+    private static List<AbstractWorkerThread> gmwtHandles;
 
-    public static int numExecutorNodes;
+    // keep track of number of executor slaves in system
+    private static int numWorkerNodes;
 
+
+    // constructor
     public GearmanProxy() {
         logger.info("--- GearmanProxy Constructor ---");
 
         gewtHandles = new Stack<AbstractWorkerThread>();
         gmwtHandles = new Stack<AbstractWorkerThread>();
-        numExecutorNodes = 0;
-
+        numWorkerNodes = 0;
     }
 
-    public void init_worker(String host, int port) throws RuntimeException{
+
+    /*
+     * This method initializes the  gearman workers.
+     *
+     * @param host the host name
+     *
+     * @param port the host port
+     *
+     */
+    public void init_worker(String host, int port) {
 
         /*
          * Purpose here is to create a 1:1 mapping of 'gearman worker':'jenkins
@@ -96,7 +111,7 @@ public class GearmanProxy {
                     gwt.start();
                     gewtHandles.add(gwt);
                 }
-                numExecutorNodes++;
+                numWorkerNodes++;
             }
 
             /*
@@ -116,16 +131,20 @@ public class GearmanProxy {
                         gwt.start();
                         gewtHandles.add(gwt);
                     }
-                    numExecutorNodes++;
+                    numWorkerNodes++;
                 }
             }
         }
 
-        logger.info("--- Num of executors running = "+getNumExecutors());
+        logger.info("--- Num of executors running = " + getNumExecutors());
     }
 
+
+    /*
+     * This method stops all gearman workers
+     */
     public void stop_all() {
-        //stop gearman executors
+        // stop gearman executors
         for (AbstractWorkerThread gewtHandle : gewtHandles) { // stop executors
             gewtHandle.stop();
         }
@@ -135,15 +154,37 @@ public class GearmanProxy {
             gmwtHandle.stop();
         }
         gmwtHandles.clear();
-        numExecutorNodes = 0;
+        numWorkerNodes = 0;
 
-        logger.info("--- Num of executors running = "+getNumExecutors());
+        logger.info("--- Num of executors running = " + getNumExecutors());
     }
 
+    /*
+     * This method returns the total number of gearman executor threads
+     */
     public int getNumExecutors() {
+        return gmwtHandles.size() + gewtHandles.size();
+    }
 
-        return gmwtHandles.size()+gewtHandles.size();
+    /*
+     * This method returns the list of gearman executor workers
+     */
+    public static synchronized List<AbstractWorkerThread> getGewtHandles() {
+        return gewtHandles;
+    }
 
+    /*
+     * This method returns the number of worker nodes
+     */
+    public static synchronized int getNumWorkerNodes() {
+        return numWorkerNodes;
+    }
+
+    /*
+     * This method sets the number of worker nodes
+     */
+    public static synchronized void setNumWorkerNodes(int numWorkerNodes) {
+        GearmanProxy.numWorkerNodes = numWorkerNodes;
     }
 
 }

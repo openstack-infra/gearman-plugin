@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This class is used to set the global configuration for the gearman-plugin It
- * is also used to launch gearman workers on this Jenkins server
+ * is also used to enable/disable the gearman plugin.
  *
  * @author Khai Do
  */
@@ -44,11 +44,10 @@ public class GearmanPluginConfig extends GlobalConfiguration {
 
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
-    public static boolean launchWorker; // launchWorker state (from UI checkbox)
+    private boolean launchWorker; // enable/disable plugin
     private String host; // gearman server host
     private int port; // gearman server port
     GearmanProxy gearmanProxy;
-
 
     /**
      * Constructor.
@@ -64,16 +63,18 @@ public class GearmanPluginConfig extends GlobalConfiguration {
          * initialize the launch worker flag to disabled state at jenkins
          * startup so we are always at a known state
          */
-        GearmanPluginConfig.launchWorker = Constants.GEARMAN_DEFAULT_LAUNCH_WORKER;
+        launchWorker = Constants.GEARMAN_DEFAULT_LAUNCH_WORKER;
         save();
     }
 
+    public static GearmanPluginConfig get() {
+        return GlobalConfiguration.all().get(GearmanPluginConfig.class);
+    }
 
     /*
      * This method runs when user clicks Test Connection button.
      *
-     * @return
-     *  message indicating whether connection test passed or failed
+     * @return message indicating whether connection test passed or failed
      */
     public FormValidation doTestConnection(
             @QueryParameter("host") final String host,
@@ -87,11 +88,15 @@ public class GearmanPluginConfig extends GlobalConfiguration {
         }
     }
 
+    /*
+     * This method runs when user saves the configuration form
+     */
     @Override
     public boolean configure(StaplerRequest req, JSONObject json)
             throws Descriptor.FormException {
 
-        // set the gearman config from user entered values in jenkins config page
+        // set the gearman config from user entered values in jenkins config
+        // page
         launchWorker = json.getBoolean("launchWorker");
         host = json.getString("host");
         port = json.getInt("port");
@@ -102,8 +107,10 @@ public class GearmanPluginConfig extends GlobalConfiguration {
             logger.info("--- Check connection to Gearman Server " + host + ":"
                     + port);
             if (!GearmanPluginUtil.connectionIsAvailable(host, port, 5000)) {
-                GearmanPluginConfig.launchWorker = false;
-                throw new RuntimeException("Unable to connect to Gearman Server");
+                launchWorker = false;
+                throw new FormException("Unable to connect to Gearman server. "
+                        + "Please check the server connection settings and retry.",
+                        "host");
             }
 
             gearmanProxy.init_worker(host, port);

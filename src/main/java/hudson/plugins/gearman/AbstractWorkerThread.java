@@ -38,8 +38,6 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractWorkerThread implements Runnable {
 
     public static final String DEFAULT_EXECUTOR_NAME = "anonymous";
-//    private static final Logger logger = LoggerFactory
-//            .getLogger(Constants.PLUGIN_EXECTUOR_LOGGER_NAME);
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
@@ -123,10 +121,15 @@ public abstract class AbstractWorkerThread implements Runnable {
 
 
         if (worker.isRunning()) {
-            logger.info("Stopping " + getName() + ":" + getId().toString() +
-                    " (" + new Date().toString() + ")");
-            worker.unregisterAll();
-            worker.stop();
+            try {
+                logger.info("Stopping " + getName() + ":" + getId().toString() +
+                        " (" + new Date().toString() + ")");
+                worker.unregisterAll();
+                worker.stop();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
         }
 
         thread.interrupt();
