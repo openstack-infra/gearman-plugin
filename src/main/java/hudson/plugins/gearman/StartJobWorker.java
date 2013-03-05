@@ -124,18 +124,17 @@ public class StartJobWorker extends AbstractGearmanFunction {
         Action params = new NodeParametersAction(buildParams, decodedUniqueId);
         Action [] actions = {runNode, params};
 
+        // schedule jenkins to build project
         logger.info("Scheduling "+project.getName()+" build #" +
                 project.getNextBuildNumber()+" on " + runNodeName
                 + " with UUID " + decodedUniqueId + " and build params " + buildParams);
-
         Future<?> future = project.scheduleBuild2(0, new Cause.UserIdCause(), actions);
 
-        String jobException = "";
-        String jobResultMsg = "";
-
-        // jobResult does not change otherwise no results are returned:
-        // https://answers.launchpad.net/gearman-java/+question/221348
+        // check build and pass results back to client
         boolean jobResult = true;
+        String jobFailureMsg = "";
+        String jobWarningMsg = "";
+        String jobResultMsg = "";
 
         try {
             // wait for jenkins build to complete
@@ -152,30 +151,32 @@ public class StartJobWorker extends AbstractGearmanFunction {
             } else if (result == Result.ABORTED) {
                 jobResultMsg = "Build Aborted : "+buildNum+": "+buildId+" on " + runNodeName
                         + " with UUID " + decodedUniqueId + " and build params " + buildParams;
-                jobException = jobResultMsg;
             } else if (result == Result.UNSTABLE) {
-                jobResultMsg = "Build Unstable : "+buildNum+": "+buildId+" on " + runNodeName
+                jobFailureMsg = "Build Unstable : "+buildNum+": "+buildId+" on " + runNodeName
                         + " with UUID " + decodedUniqueId + " and build params " + buildParams;
-                jobException = jobResultMsg;
+                jobResult = false;
             } else if (result == Result.FAILURE) {
-                jobResultMsg = "Build failed : "+buildNum+": "+buildId+" on " + runNodeName
+                jobFailureMsg = "Build failed : "+buildNum+": "+buildId+" on " + runNodeName
                         + " with UUID " + decodedUniqueId + " and build params " + buildParams;
-                jobException = jobResultMsg;
+                jobResult = false;
             } else if (result == Result.NOT_BUILT) {
-                jobResultMsg = "Build not done : "+buildNum+": "+buildId+" on " + runNodeName
+                jobWarningMsg = "Build not done : "+buildNum+": "+buildId+" on " + runNodeName
                         + " with UUID " + decodedUniqueId + " and build params " + buildParams;
-                jobException = jobResultMsg;
+                jobResult = false;
             }
 
         } catch (InterruptedException e) {
-            jobException = e.getMessage();
+            jobFailureMsg = e.getMessage();
+            jobResult = false;
         } catch (ExecutionException e) {
-            jobException = e.getMessage();
+            jobFailureMsg = e.getMessage();
+            jobResult = false;
         }
 
         // return result to client
         GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, jobResult,
-                jobResultMsg.getBytes(), new byte[0], jobException.getBytes(), 0, 0);
+                jobResultMsg.getBytes(), jobWarningMsg.getBytes(),
+                jobFailureMsg.getBytes(), 0, 0);
         return gjr;
     }
 }

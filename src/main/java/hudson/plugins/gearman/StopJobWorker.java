@@ -64,44 +64,33 @@ public class StopJobWorker extends AbstractGearmanFunction {
             }
         }
 
-        boolean abortResult = false;
-        if (decodedUniqueId != null) {
-            // Abort running jenkins build that contain matching uuid
-            abortResult = abortBuild(decodedUniqueId);
-        }
-
-        //TODO: build might be on gearman queue if it's not currently
-        // running by jenkins, need to check the gearman queue for the
-        // job and remove it.
-
-        String jobResultMsg = "";
-        String jobResultEx = "";
+        // check build and pass results back to client
         boolean jobResult = true;
-        if (abortResult){
-            jobResultMsg = "Canceled jenkins build " + decodedUniqueId;
+        String jobFailureMsg = "";
+        String jobWarningMsg = "";
+        String jobResultMsg = "";
+
+        if (decodedUniqueId.isEmpty() || decodedUniqueId == null){
+            logger.info("Client passed in an invalid UUID");
+            jobFailureMsg = "I need the job Id please";
+            jobResult = false;
         } else {
-            jobResultMsg = "Did not cancel jenkins build " + decodedUniqueId;
-            jobResultEx = "Could not cancel build " + decodedUniqueId;
+
+            // Abort running jenkins build that contain matching uuid
+            jobResult = abortBuild(decodedUniqueId);
+
+            if (jobResult){
+                jobResultMsg = "Canceled jenkins build " + decodedUniqueId;
+            } else {
+                jobFailureMsg = "Could not cancel build " + decodedUniqueId;
+                jobResult = false;
+            }
         }
 
         GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, jobResult,
-                jobResultMsg.getBytes(), new byte[0], jobResultEx.getBytes(), 0, 0);
+                jobResultMsg.getBytes(), jobWarningMsg.getBytes(),
+                jobFailureMsg.getBytes(), 0, 0);
         return gjr;
-    }
-
-    /**
-     * Function to cancel a Gearman job from the Gearman queue
-     *
-     * @param uuid
-     *      The build uuid
-     * @return
-     *      true if job was cancel, otherwise false
-     */
-    private boolean cancelJob (String uuid) {
-
-        //TODO:  Need to cancel job from gearman queue, not sure how to
-        //      do it yet.
-        return false;
     }
 
     /**
@@ -115,10 +104,6 @@ public class StopJobWorker extends AbstractGearmanFunction {
      *      true if build was aborted, otherwise false
      */
     private boolean abortBuild (String uuid) {
-
-        if (uuid.isEmpty() || uuid == null){ //NOOP
-            return false;
-        }
 
         /*
          * iterate over the executors on master and slave nodes to find the

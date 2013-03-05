@@ -41,5 +41,9 @@ request = client.submit_job(function,
                             poll_timeout=60,
                             unique=build_id)
 
-
-print request.result
+if (request.exception) :
+    print request.exception
+else:
+    print ', '.join(request.warning_updates)
+    print request.result
+    print 'Work complete with state %s' % request.state
