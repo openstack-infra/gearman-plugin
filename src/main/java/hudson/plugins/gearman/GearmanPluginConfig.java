@@ -57,14 +57,6 @@ public class GearmanPluginConfig extends GlobalConfiguration {
 
         gearmanProxy = new GearmanProxy();
         load();
-
-        /*
-         * Not sure when to register gearman functions yet so for now always
-         * initialize the launch worker flag to disabled state at jenkins
-         * startup so we are always at a known state
-         */
-        launchWorker = Constants.GEARMAN_DEFAULT_LAUNCH_WORKER;
-        save();
     }
 
     public static GearmanPluginConfig get() {
