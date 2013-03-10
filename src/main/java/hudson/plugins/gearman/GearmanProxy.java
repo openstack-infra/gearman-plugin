@@ -21,8 +21,8 @@ package hudson.plugins.gearman;
 import hudson.model.Computer;
 import hudson.model.Node;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
 
 import jenkins.model.Jenkins;
 
@@ -44,7 +44,7 @@ public class GearmanProxy {
     private static List<AbstractWorkerThread> gewtHandles;
     private static List<AbstractWorkerThread> gmwtHandles;
 
-    // keep track of number of executor slaves in system
+    // keep track of number of computers that are tied to gearman workers
     private static int numWorkerNodes;
 
 
@@ -52,8 +52,8 @@ public class GearmanProxy {
     public GearmanProxy() {
         logger.info("--- GearmanProxy Constructor ---");
 
-        gewtHandles = new Stack<AbstractWorkerThread>();
-        gmwtHandles = new Stack<AbstractWorkerThread>();
+        gewtHandles = new ArrayList<AbstractWorkerThread>();
+        gmwtHandles = new ArrayList<AbstractWorkerThread>();
         numWorkerNodes = 0;
     }
 
@@ -102,16 +102,18 @@ public class GearmanProxy {
 
             if (masterNode != null) {
                 Computer computer = masterNode.toComputer();
-                int executors = computer.getExecutors().size();
-                for (int i = 0; i < executors; i++) {
-                    // create a gearman worker for every executor on the master
-                    gwt = new ExecutorWorkerThread(host, port, "master-exec"
-                            + Integer.toString(i), masterNode);
-                    gwt.registerJobs();
-                    gwt.start();
-                    gewtHandles.add(gwt);
+                if (computer != null) {
+                    int executors = computer.getExecutors().size();
+                    for (int i = 0; i < executors; i++) {
+                        // create a gearman worker for every executor on the master
+                        gwt = new ExecutorWorkerThread(host, port, "master-exec"
+                                + Integer.toString(i), masterNode);
+                        gwt.registerJobs();
+                        gwt.start();
+                        gewtHandles.add(gwt);
+                    }
+                    numWorkerNodes++;
                 }
-                numWorkerNodes++;
             }
 
             /*
@@ -121,15 +123,17 @@ public class GearmanProxy {
             if (!nodes.isEmpty()) {
                 for (Node node : nodes) {
                     Computer computer = node.toComputer();
-                    // create a gearman worker for every executor on the slave
-                    int slaveExecutors = computer.getExecutors().size();
-                    for (int i = 0; i < slaveExecutors; i++) {
-                        gwt = new ExecutorWorkerThread(host, port,
-                                node.getNodeName() + "-exec"
-                                        + Integer.toString(i), node);
-                        gwt.registerJobs();
-                        gwt.start();
-                        gewtHandles.add(gwt);
+                    if (computer != null) {
+                        // create a gearman worker for every executor on the slave
+                        int slaveExecutors = computer.getExecutors().size();
+                        for (int i = 0; i < slaveExecutors; i++) {
+                            gwt = new ExecutorWorkerThread(host, port,
+                                    node.getNodeName() + "-exec"
+                                            + Integer.toString(i), node);
+                            gwt.registerJobs();
+                            gwt.start();
+                            gewtHandles.add(gwt);
+                        }
                     }
                     numWorkerNodes++;
                 }
@@ -171,6 +175,13 @@ public class GearmanProxy {
      */
     public static synchronized List<AbstractWorkerThread> getGewtHandles() {
         return gewtHandles;
+    }
+
+    /*
+     * This method returns the list of gearman management workers
+     */
+    public static synchronized List<AbstractWorkerThread> getGmwtHandles() {
+        return gmwtHandles;
     }
 
     /*
