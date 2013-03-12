@@ -53,7 +53,7 @@ public class GearmanPluginConfig extends GlobalConfiguration {
      * Constructor.
      */
     public GearmanPluginConfig() {
-        logger.info("--- GearmanPluginConfig Constructor ---");
+        logger.info("---- GearmanPluginConfig Constructor ---");
 
         gearmanProxy = new GearmanProxy();
         load();
@@ -96,7 +96,7 @@ public class GearmanPluginConfig extends GlobalConfiguration {
         if (launchWorker) {
 
             // check for a valid connection to gearman server
-            logger.info("--- Check connection to Gearman Server " + host + ":"
+            logger.info("---- Check connection to Gearman Server " + host + ":"
                     + port);
             if (!GearmanPluginUtil.connectionIsAvailable(host, port, 5000)) {
                 launchWorker = false;

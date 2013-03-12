@@ -75,7 +75,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
      */
     @Override
     public GearmanJobResult executeFunction() {
-        logger.info("----- Running executeFunction in " + name + " ----");
+        logger.info("---- Running executeFunction in " + name + " ----");
 
         // decode the uniqueId from the client
         String decodedUniqueId = null;
@@ -125,7 +125,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
         Action [] actions = {runNode, params};
 
         // schedule jenkins to build project
-        logger.info("Scheduling "+project.getName()+" build #" +
+        logger.info("---- Scheduling "+project.getName()+" build #" +
                 project.getNextBuildNumber()+" on " + runNodeName
                 + " with UUID " + decodedUniqueId + " and build params " + buildParams);
         Future<?> future = project.scheduleBuild2(0, new Cause.UserIdCause(), actions);

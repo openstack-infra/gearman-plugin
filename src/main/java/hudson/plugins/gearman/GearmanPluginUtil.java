@@ -61,10 +61,10 @@ public class GearmanPluginUtil {
         } else {
             try {
                 socket.connect(endPoint, timeout);
-                logger.info("Connection Success:    " + endPoint);
+                logger.info("---- Connection Success:    " + endPoint);
                 return true;
             } catch (Exception e) {
-                logger.info("Connection Failure:    " + endPoint + " message: "
+                logger.info("---- Connection Failure:    " + endPoint + " message: "
                         + e.getClass().getSimpleName() + " - " + e.getMessage());
             } finally {
                 if (socket != null) {

@@ -135,7 +135,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
     @Override
     public void registerJobs() {
 
-        logger.info("----- Registering executor jobs on " + name + " ----");
+        logger.info("---- Registering executor jobs on " + name + " ----");
 
         /*
          * We start with an empty worker.
@@ -161,7 +161,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
             if (label == null) { // project has no label -> so register
                                  // "build:projectName" on all nodes
                 String jobFunctionName = "build:" + projectName;
-                logger.info("Registering job " + jobFunctionName + " on "
+                logger.info("---- Registering job " + jobFunctionName + " on "
                         + name);
                 worker.registerFunctionFactory(new CustomGearmanFunctionFactory(
                         jobFunctionName, StartJobWorker.class.getName(),
@@ -180,7 +180,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
                     if (projectLabelNodes.contains(this.node)) {
                         String jobFunctionName = "build:" + projectName
                                 + ":" + projectLabel;
-                        logger.info("Registering job " + jobFunctionName
+                        logger.info("---- Registering job " + jobFunctionName
                                 + " on " + this.node.getNodeName());
                         // register with label (i.e. "build:$projectName:$projectLabel")
                         worker.registerFunctionFactory(new CustomGearmanFunctionFactory(

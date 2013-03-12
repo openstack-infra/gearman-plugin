@@ -71,7 +71,7 @@ public class StopJobWorker extends AbstractGearmanFunction {
         String jobResultMsg = "";
 
         if (decodedUniqueId.isEmpty() || decodedUniqueId == null){
-            logger.info("Client passed in an invalid UUID");
+            logger.info("---- Client passed in an invalid UUID");
             jobFailureMsg = "I need the job Id please";
             jobResult = false;
         } else {
@@ -131,7 +131,7 @@ public class StopJobWorker extends AbstractGearmanFunction {
 
                 if (param.getUuid().equals(uuid)) {
 
-                    logger.info("Aborting build : "+buildNum+": "+buildId+" on " + runNodeName
+                    logger.info("---- Aborting build : "+buildNum+": "+buildId+" on " + runNodeName
                             +" with UUID " + uuid + " and build params " + buildParams);
 
                     // abort the running jenkins build
@@ -174,7 +174,7 @@ public class StopJobWorker extends AbstractGearmanFunction {
 
                 if (param.getUuid().equals(uuid)) {
 
-                    logger.info("Aborting build : "+buildNum+": "+buildId+" on " + runNodeName
+                    logger.info("---- Aborting build : "+buildNum+": "+buildId+" on " + runNodeName
                             +" with UUID " + uuid + " and build params " + buildParams);
 
                     // abort the running jenkins build

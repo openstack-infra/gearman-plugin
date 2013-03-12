@@ -101,7 +101,7 @@ public abstract class AbstractWorkerThread implements Runnable {
      */
     public void registerJobs() {
 
-        logger.info("----- AbstractorWorker registerJobs function ----");
+        logger.info("---- AbstractorWorker registerJobs function ----");
 
     }
 
@@ -122,10 +122,10 @@ public abstract class AbstractWorkerThread implements Runnable {
 
         if (worker.isRunning()) {
             try {
-                logger.info("Stopping " + getName() + ":" + getId().toString() +
+                logger.info("---- Stopping " + getName() + ":" + getId().toString() +
                         " (" + new Date().toString() + ")");
                 worker.unregisterAll();
-                worker.stop();
+                worker.shutdown();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -154,7 +154,7 @@ public abstract class AbstractWorkerThread implements Runnable {
     public void run() {
 
         if (!worker.isRunning()) {
-            logger.info("Starting Worker "+ getName() + ":" + getId().toString() +
+            logger.info("---- Starting Worker "+ getName() + ":" + getId().toString() +
                     " ("+new Date().toString()+")");
             worker.setWorkerID(name);
             worker.setJobUniqueIdRequired(true);

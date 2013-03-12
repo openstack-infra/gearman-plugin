@@ -50,7 +50,7 @@ public class GearmanProxy {
 
     // constructor
     public GearmanProxy() {
-        logger.info("--- GearmanProxy Constructor ---");
+        logger.info("---- GearmanProxy Constructor ---");
 
         gewtHandles = new ArrayList<AbstractWorkerThread>();
         gmwtHandles = new ArrayList<AbstractWorkerThread>();
@@ -94,9 +94,9 @@ public class GearmanProxy {
             try {
                 masterNode = Computer.currentComputer().getNode();
             } catch (NullPointerException npe) {
-                logger.info("--- Master is offline");
+                logger.info("---- Master is offline");
             } catch (Exception e) {
-                logger.info("--- Can't get Master");
+                logger.info("---- Can't get Master");
                 e.printStackTrace();
             }
 
@@ -140,7 +140,7 @@ public class GearmanProxy {
             }
         }
 
-        logger.info("--- Num of executors running = " + getNumExecutors());
+        logger.info("---- Num of executors running = " + getNumExecutors());
     }
 
 
@@ -160,7 +160,7 @@ public class GearmanProxy {
         gmwtHandles.clear();
         numWorkerNodes = 0;
 
-        logger.info("--- Num of executors running = " + getNumExecutors());
+        logger.info("---- Num of executors running = " + getNumExecutors());
     }
 
     /*
