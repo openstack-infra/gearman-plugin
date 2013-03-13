@@ -22,7 +22,6 @@ import hudson.model.TaskListener;
 import hudson.model.Computer;
 import hudson.model.Node;
 import hudson.slaves.ComputerListener;
-import hudson.slaves.OfflineCause;
 
 import java.io.IOException;
 import java.util.List;
@@ -42,6 +41,7 @@ public class ComputerListenerImpl extends ComputerListener {
 
     @Override
     public void onConfigurationChange() {
+        // Bug: Configuration save occurs after this function is called
         // gets called on any configuration change
         // includes new slave and delete slave
         logger.info("---- " + ComputerListenerImpl.class.getName() + ":"
@@ -51,11 +51,6 @@ public class ComputerListenerImpl extends ComputerListener {
         if (!GearmanPluginConfig.get().launchWorker()) {
             return;
         }
-
-        // TODO: adjust for an update to labels.
-        // Problem: node-label reference are unchanged on this call. I think
-        // Jenkins internal state needs time to update before we can re-register
-        // gearman functions
 
         // TODO: adjust for an update to executors. Method does not provide the
         // computer to know which thread to remove or add
@@ -140,7 +135,6 @@ public class ComputerListenerImpl extends ComputerListener {
         if (Computer.currentComputer() != c
                 && !GearmanProxy.getGewtHandles().contains(c)) {
 
-              int currNumNodes = GearmanPluginUtil.getNumTotalNodes();
               Node node = c.getNode();
               int slaveExecutors = c.getExecutors().size();
               // create a gearman worker for every executor on the slave
@@ -155,49 +149,4 @@ public class ComputerListenerImpl extends ComputerListener {
               }
         }
     }
-
-    @Override
-    public void onTemporarilyOnline(Computer c) {
-        // gets called when existing slave is re-enabled (including master)
-        logger.info("---- " + ComputerListenerImpl.class.getName() + ":"
-                + " onTemporarilyOnline");
-
-        // update functions only when gearman-plugin is enabled
-        if (!GearmanPluginConfig.get().launchWorker()) {
-            return;
-        }
-
-        // update gearman worker functions on existing threads
-        List<ExecutorWorkerThread> workers = GearmanProxy.getGewtHandles();
-        synchronized(workers) {
-            for (ExecutorWorkerThread worker : workers) {
-                if (worker.getNode().toComputer().equals(c)) {
-                    worker.registerJobs();
-                }
-            }
-        }
-    }
-
-    @Override
-    public void onTemporarilyOffline(Computer c, OfflineCause cause) {
-        // gets called when existing slave is dis-enabled (including master)
-        logger.info("---- " + ComputerListenerImpl.class.getName() + ":"
-                + " onTemporarilyOffline");
-
-        // update functions only when gearman-plugin is enabled
-        if (!GearmanPluginConfig.get().launchWorker()) {
-            return;
-        }
-
-        // update gearman worker functions on existing threads
-        List<ExecutorWorkerThread> workers = GearmanProxy.getGewtHandles();
-        synchronized(workers) {
-            for (ExecutorWorkerThread worker : workers) {
-                if (worker.getNode().toComputer().equals(c)) {
-                    worker.registerJobs();
-                }
-            }
-        }
-    }
-
 }
