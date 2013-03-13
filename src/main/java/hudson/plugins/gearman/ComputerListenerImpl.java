@@ -18,11 +18,9 @@
 package hudson.plugins.gearman;
 
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.model.TaskListener;
 import hudson.model.Computer;
 import hudson.model.Node;
-import hudson.remoting.Channel;
 import hudson.slaves.ComputerListener;
 import hudson.slaves.OfflineCause;
 
@@ -41,40 +39,6 @@ public class ComputerListenerImpl extends ComputerListener {
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
-    @Override
-    public void preOnline(Computer c, Channel channel, FilePath root,
-            TaskListener listener) throws IOException, InterruptedException {
-        // called when slave re-connects
-        // called when new slaves are connecting for first time
-        logger.info("---- " + ComputerListenerImpl.class.getName() + ":"
-                + " preOnline");
-
-        // update functions only when gearman-plugin is enabled
-        if (!GearmanPluginConfig.get().launchWorker()) {
-            return;
-        }
-
-        // on creation of a slave
-        int prevNumNodes = GearmanProxy.getNumWorkerNodes();
-        int currNumNodes = GearmanPluginUtil.getNumTotalNodes();
-        logger.info("----  prevNumNodes = " + prevNumNodes);
-        logger.info("----  currNumNodes = " + currNumNodes);
-        if (prevNumNodes < currNumNodes) {
-            Node node = c.getNode();
-            int slaveExecutors = c.getExecutors().size();
-            for (int i = 0; i < slaveExecutors; i++) {
-                AbstractWorkerThread gwt = new ExecutorWorkerThread(
-                        GearmanPluginConfig.get().getHost(),
-                        GearmanPluginConfig.get().getPort(), node.getNodeName()
-                                + "-exec" + Integer.toString(i), node);
-                gwt.start();
-                GearmanProxy.getGewtHandles().add(gwt);
-            }
-            GearmanProxy.setNumWorkerNodes(currNumNodes);
-            logger.info("---- numWorkerNodes = "
-                    + GearmanProxy.getNumWorkerNodes());
-        }
-    }
 
     @Override
     public void onConfigurationChange() {
@@ -109,33 +73,15 @@ public class ComputerListenerImpl extends ComputerListener {
             return;
         }
 
-        // on deletion of slave
-        int prevNumNodes = GearmanProxy.getNumWorkerNodes();
-        int currNumNodes = GearmanPluginUtil.getNumTotalNodes();
-        logger.info("----  prevNumNodes = " + prevNumNodes);
-        logger.info("----  currNumNodes = " + currNumNodes);
-        if (prevNumNodes > currNumNodes) {
-            List<AbstractWorkerThread> workers = GearmanProxy.getGewtHandles();
-            if (!workers.isEmpty()) {
-                for (AbstractWorkerThread worker : workers) {
-                    if (worker.name.contains(c.getName())) {
-                        logger.info("---- stopping executor worker = "
-                                + worker.getName());
-                        GearmanProxy.getGewtHandles().remove(worker);
-                        worker.stop();
-                    }
-                }
-                GearmanProxy.setNumWorkerNodes(currNumNodes);
-                logger.info("---- numWorkerNodes = "
-                        + GearmanProxy.getNumWorkerNodes());
-            }
-        } else {
-            // on disconnect of node
-            // update gearman worker functions on existing threads
-            List<AbstractWorkerThread> workers = GearmanProxy.getGewtHandles();
-            if (!workers.isEmpty()) {
-                for (AbstractWorkerThread worker : workers) {
-                    worker.registerJobs();
+        // remove worker when jenkins slave is deleted or disconnected
+        List<ExecutorWorkerThread> workers = GearmanProxy.getGewtHandles();
+        synchronized(workers) {
+            for (AbstractWorkerThread worker : workers) {
+                if (worker.name.contains(c.getName())) {
+                    logger.info("---- stopping executor worker = "
+                              + worker.getName());
+                    GearmanProxy.getGewtHandles().remove(worker);
+                    worker.stop();
                 }
             }
         }
@@ -166,10 +112,10 @@ public class ComputerListenerImpl extends ComputerListener {
             String host = GearmanPluginConfig.get().getHost();
             int port = GearmanPluginConfig.get().getPort();
 
-            AbstractWorkerThread gwt = new ManagementWorkerThread(host, port, host);
-            gwt.registerJobs();
-            gwt.start();
-            GearmanProxy.getGmwtHandles().add(gwt);
+            ManagementWorkerThread mwt = new ManagementWorkerThread(host, port, host);
+            mwt.registerJobs();
+            mwt.start();
+            GearmanProxy.getGmwtHandles().add(mwt);
 
             /*
              * Spawn executors for the jenkins master Need to treat the master
@@ -180,25 +126,33 @@ public class ComputerListenerImpl extends ComputerListener {
             int executors = c.getExecutors().size();
             for (int i = 0; i < executors; i++) {
                 // create a gearman worker for every executor on the master
-                gwt = new ExecutorWorkerThread(GearmanPluginConfig.get().getHost(),
+                ExecutorWorkerThread ewt = new ExecutorWorkerThread(GearmanPluginConfig.get().getHost(),
                         GearmanPluginConfig.get().getPort(),
                         "master-exec"+ Integer.toString(i),
                         masterNode);
-                gwt.start();
-                GearmanProxy.getGewtHandles().add(gwt);
+                ewt.registerJobs();
+                ewt.start();
+                GearmanProxy.getGewtHandles().add(ewt);
             }
-            GearmanProxy.setNumWorkerNodes(GearmanPluginUtil.getNumTotalNodes());
-            logger.info("---- numWorkerNodes = "
-                    + GearmanProxy.getNumWorkerNodes());
         }
 
-        // on re-connection of node
-        // update gearman worker functions on existing threads
-        List<AbstractWorkerThread> workers = GearmanProxy.getGewtHandles();
-        if (!workers.isEmpty()) {
-            for (AbstractWorkerThread worker : workers) {
-                worker.registerJobs();
-            }
+        // on creation of new slave
+        if (Computer.currentComputer() != c
+                && !GearmanProxy.getGewtHandles().contains(c)) {
+
+              int currNumNodes = GearmanPluginUtil.getNumTotalNodes();
+              Node node = c.getNode();
+              int slaveExecutors = c.getExecutors().size();
+              // create a gearman worker for every executor on the slave
+              for (int i = 0; i < slaveExecutors; i++) {
+                  ExecutorWorkerThread gwt = new ExecutorWorkerThread(
+                          GearmanPluginConfig.get().getHost(),
+                          GearmanPluginConfig.get().getPort(), node.getNodeName()
+                                  + "-exec" + Integer.toString(i), node);
+                  gwt.registerJobs();
+                  gwt.start();
+                  GearmanProxy.getGewtHandles().add(gwt);
+              }
         }
     }
 
@@ -214,10 +168,12 @@ public class ComputerListenerImpl extends ComputerListener {
         }
 
         // update gearman worker functions on existing threads
-        List<AbstractWorkerThread> workers = GearmanProxy.getGewtHandles();
-        if (!workers.isEmpty()) {
-            for (AbstractWorkerThread worker : workers) {
-                worker.registerJobs();
+        List<ExecutorWorkerThread> workers = GearmanProxy.getGewtHandles();
+        synchronized(workers) {
+            for (ExecutorWorkerThread worker : workers) {
+                if (worker.getNode().toComputer().equals(c)) {
+                    worker.registerJobs();
+                }
             }
         }
     }
@@ -234,13 +190,14 @@ public class ComputerListenerImpl extends ComputerListener {
         }
 
         // update gearman worker functions on existing threads
-        List<AbstractWorkerThread> workers = GearmanProxy.getGewtHandles();
-        if (!workers.isEmpty()) {
-            for (AbstractWorkerThread worker : workers) {
-                worker.registerJobs();
+        List<ExecutorWorkerThread> workers = GearmanProxy.getGewtHandles();
+        synchronized(workers) {
+            for (ExecutorWorkerThread worker : workers) {
+                if (worker.getNode().toComputer().equals(c)) {
+                    worker.registerJobs();
+                }
             }
         }
     }
-
 
 }

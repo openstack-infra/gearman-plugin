@@ -47,10 +47,12 @@ public class ProjectListener extends ItemListener {
         }
 
         // update gearman worker functions on existing threads
-        List<AbstractWorkerThread> workers = GearmanProxy.getGewtHandles();
-        if (!workers.isEmpty()) {
-            for (AbstractWorkerThread worker : workers) {
-                worker.registerJobs();
+        List<ExecutorWorkerThread> workers = GearmanProxy.getGewtHandles();
+        synchronized(workers) {
+            if (!workers.isEmpty()) {
+                for (AbstractWorkerThread worker : workers) {
+                    worker.registerJobs();
+                }
             }
         }
     }
@@ -66,10 +68,12 @@ public class ProjectListener extends ItemListener {
         }
 
         // update gearman worker functions on existing threads
-        List<AbstractWorkerThread> workers = GearmanProxy.getGewtHandles();
-        if (!workers.isEmpty()) {
-            for (AbstractWorkerThread worker : workers) {
-                worker.registerJobs();
+        List<ExecutorWorkerThread> workers = GearmanProxy.getGewtHandles();
+        synchronized(workers) {
+            if (!workers.isEmpty()) {
+                for (AbstractWorkerThread worker : workers) {
+                    worker.registerJobs();
+                }
             }
         }
     }
@@ -85,10 +89,12 @@ public class ProjectListener extends ItemListener {
         }
 
         // update gearman worker functions on existing threads
-        List<AbstractWorkerThread> workers = GearmanProxy.getGewtHandles();
-        if (!workers.isEmpty()) {
-            for (AbstractWorkerThread worker : workers) {
-                worker.registerJobs();
+        List<ExecutorWorkerThread> workers = GearmanProxy.getGewtHandles();
+        synchronized(workers) {
+            if (!workers.isEmpty()) {
+                for (AbstractWorkerThread worker : workers) {
+                    worker.registerJobs();
+                }
             }
         }
     }
@@ -104,10 +110,12 @@ public class ProjectListener extends ItemListener {
         }
 
         // update gearman worker functions on existing threads
-        List<AbstractWorkerThread> workers = GearmanProxy.getGewtHandles();
-        if (!workers.isEmpty()) {
-            for (AbstractWorkerThread worker : workers) {
-                worker.registerJobs();
+        List<ExecutorWorkerThread> workers = GearmanProxy.getGewtHandles();
+        synchronized(workers) {
+            if (!workers.isEmpty()) {
+                for (AbstractWorkerThread worker : workers) {
+                    worker.registerJobs();
+                }
             }
         }
     }
@@ -123,10 +131,12 @@ public class ProjectListener extends ItemListener {
         }
 
         // update gearman worker functions on existing threads
-        List<AbstractWorkerThread> workers = GearmanProxy.getGewtHandles();
-        if (!workers.isEmpty()) {
-            for (AbstractWorkerThread worker : workers) {
-                worker.registerJobs();
+        List<ExecutorWorkerThread> workers = GearmanProxy.getGewtHandles();
+        synchronized(workers) {
+            if (!workers.isEmpty()) {
+                for (AbstractWorkerThread worker : workers) {
+                    worker.registerJobs();
+                }
             }
         }
     }

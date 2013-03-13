@@ -47,7 +47,7 @@ public class GearmanPluginConfig extends GlobalConfiguration {
     private boolean launchWorker; // enable/disable plugin
     private String host; // gearman server host
     private int port; // gearman server port
-    GearmanProxy gearmanProxy;
+    private final GearmanProxy gearmanProxy;
 
     /**
      * Constructor.

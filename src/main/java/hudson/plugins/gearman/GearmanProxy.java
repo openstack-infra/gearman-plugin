@@ -22,6 +22,7 @@ import hudson.model.Computer;
 import hudson.model.Node;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import jenkins.model.Jenkins;
@@ -41,20 +42,15 @@ public class GearmanProxy {
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
     // handles to gearman workers
-    private static List<AbstractWorkerThread> gewtHandles;
-    private static List<AbstractWorkerThread> gmwtHandles;
-
-    // keep track of number of computers that are tied to gearman workers
-    private static int numWorkerNodes;
-
+    private static List<ExecutorWorkerThread> gewtHandles;
+    private static List<ManagementWorkerThread> gmwtHandles;
 
     // constructor
     public GearmanProxy() {
         logger.info("---- GearmanProxy Constructor ---");
 
-        gewtHandles = new ArrayList<AbstractWorkerThread>();
-        gmwtHandles = new ArrayList<AbstractWorkerThread>();
-        numWorkerNodes = 0;
+        gewtHandles = Collections.synchronizedList(new ArrayList<ExecutorWorkerThread>());
+        gmwtHandles = Collections.synchronizedList(new ArrayList<ManagementWorkerThread>());
     }
 
 
@@ -79,7 +75,7 @@ public class GearmanProxy {
              * Spawn management executor worker. This worker does not need any
              * executors. It only needs to work with gearman.
              */
-            AbstractWorkerThread gwt = new ManagementWorkerThread(host, port, host);
+            ManagementWorkerThread gwt = new ManagementWorkerThread(host, port, host);
             gwt.registerJobs();
             gwt.start();
             gmwtHandles.add(gwt);
@@ -106,13 +102,12 @@ public class GearmanProxy {
                     int executors = computer.getExecutors().size();
                     for (int i = 0; i < executors; i++) {
                         // create a gearman worker for every executor on the master
-                        gwt = new ExecutorWorkerThread(host, port, "master-exec"
+                        ExecutorWorkerThread ewt  = new ExecutorWorkerThread(host, port, "master-exec"
                                 + Integer.toString(i), masterNode);
-                        gwt.registerJobs();
-                        gwt.start();
-                        gewtHandles.add(gwt);
+                        ewt.registerJobs();
+                        ewt.start();
+                        gewtHandles.add(ewt);
                     }
-                    numWorkerNodes++;
                 }
             }
 
@@ -127,15 +122,14 @@ public class GearmanProxy {
                         // create a gearman worker for every executor on the slave
                         int slaveExecutors = computer.getExecutors().size();
                         for (int i = 0; i < slaveExecutors; i++) {
-                            gwt = new ExecutorWorkerThread(host, port,
+                            ExecutorWorkerThread ewt = new ExecutorWorkerThread(host, port,
                                     node.getNodeName() + "-exec"
                                             + Integer.toString(i), node);
-                            gwt.registerJobs();
-                            gwt.start();
-                            gewtHandles.add(gwt);
+                            ewt.registerJobs();
+                            ewt.start();
+                            gewtHandles.add(ewt);
                         }
                     }
-                    numWorkerNodes++;
                 }
             }
         }
@@ -149,16 +143,19 @@ public class GearmanProxy {
      */
     public void stop_all() {
         // stop gearman executors
-        for (AbstractWorkerThread gewtHandle : gewtHandles) { // stop executors
-            gewtHandle.stop();
+        synchronized(gewtHandles) {
+            for (AbstractWorkerThread gewtHandle : gewtHandles) { // stop executors
+                gewtHandle.stop();
+            }
+            gewtHandles.clear();
         }
-        gewtHandles.clear();
 
-        for (AbstractWorkerThread gmwtHandle : gmwtHandles) { // stop executors
-            gmwtHandle.stop();
+        synchronized(gmwtHandles) {
+            for (AbstractWorkerThread gmwtHandle : gmwtHandles) { // stop executors
+                gmwtHandle.stop();
+            }
+            gmwtHandles.clear();
         }
-        gmwtHandles.clear();
-        numWorkerNodes = 0;
 
         logger.info("---- Num of executors running = " + getNumExecutors());
     }
@@ -173,29 +170,15 @@ public class GearmanProxy {
     /*
      * This method returns the list of gearman executor workers
      */
-    public static synchronized List<AbstractWorkerThread> getGewtHandles() {
+    public static synchronized List<ExecutorWorkerThread> getGewtHandles() {
         return gewtHandles;
     }
 
     /*
      * This method returns the list of gearman management workers
      */
-    public static synchronized List<AbstractWorkerThread> getGmwtHandles() {
+    public static synchronized List<ManagementWorkerThread> getGmwtHandles() {
         return gmwtHandles;
-    }
-
-    /*
-     * This method returns the number of worker nodes
-     */
-    public static synchronized int getNumWorkerNodes() {
-        return numWorkerNodes;
-    }
-
-    /*
-     * This method sets the number of worker nodes
-     */
-    public static synchronized void setNumWorkerNodes(int numWorkerNodes) {
-        GearmanProxy.numWorkerNodes = numWorkerNodes;
     }
 
 }

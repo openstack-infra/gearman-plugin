@@ -196,4 +196,8 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
             }
         }
     }
+
+    public synchronized Node getNode() {
+        return node;
+    }
 }
