@@ -22,6 +22,8 @@ import hudson.model.Descriptor;
 import hudson.util.FormValidation;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 
 import javax.servlet.ServletException;
 
@@ -32,6 +34,8 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Objects;
 
 /**
  * This class is used to set the global configuration for the gearman-plugin It
@@ -73,7 +77,7 @@ public class GearmanPluginConfig extends GlobalConfiguration {
             @QueryParameter("port") final int port) throws IOException,
             ServletException {
 
-        if (GearmanPluginUtil.connectionIsAvailable(host, port, 5000)) {
+        if (connectionIsAvailable(host, port, 5000)) {
             return FormValidation.ok("Success");
         } else {
             return FormValidation.error("Failed: Unable to Connect");
@@ -98,7 +102,7 @@ public class GearmanPluginConfig extends GlobalConfiguration {
             // check for a valid connection to gearman server
             logger.info("---- Check connection to Gearman Server " + host + ":"
                     + port);
-            if (!GearmanPluginUtil.connectionIsAvailable(host, port, 5000)) {
+            if (!connectionIsAvailable(host, port, 5000)) {
                 launchWorker = false;
                 throw new FormException("Unable to connect to Gearman server. "
                         + "Please check the server connection settings and retry.",
@@ -121,21 +125,71 @@ public class GearmanPluginConfig extends GlobalConfiguration {
      * launch worker.
      */
     public boolean launchWorker() {
-        return launchWorker;
+        return Objects.firstNonNull(launchWorker, Constants.GEARMAN_DEFAULT_LAUNCH_WORKER);
     }
 
     /**
      * This method returns the value from the server host text box
      */
     public String getHost() {
-        return host;
+        return Objects.firstNonNull(host, Constants.GEARMAN_DEFAULT_TCP_HOST);
     }
 
     /**
      * This method returns the value from the server port text box
      */
     public int getPort() {
-        return port;
+
+        if (port == 0){ // Change default value
+            return Constants.GEARMAN_DEFAULT_TCP_PORT;
+        } else {
+            return port;
+        }
+    }
+
+    /*
+     * This method checks whether a connection open and available
+     * on $host:$port
+     *
+     * @param host
+     *      the host name
+     *
+     * @param port
+     *      the host port
+     *
+     * @param timeout
+     *      the timeout (milliseconds) to try the connection
+     *
+     * @return boolean
+     *      true if a socket connection can be established otherwise false
+     */
+    private boolean connectionIsAvailable(String host, int port,
+            int timeout) {
+
+        InetSocketAddress endPoint = new InetSocketAddress(host, port);
+        Socket socket = new Socket();
+
+        if (endPoint.isUnresolved()) {
+            System.out.println("Failure " + endPoint);
+        } else {
+            try {
+                socket.connect(endPoint, timeout);
+                logger.info("Connection Success:    " + endPoint);
+                return true;
+            } catch (Exception e) {
+                logger.info("Connection Failure:    " + endPoint + " message: "
+                        + e.getClass().getSimpleName() + " - " + e.getMessage());
+            } finally {
+                if (socket != null) {
+                    try {
+                        socket.close();
+                    } catch (Exception e) {
+                        logger.info(e.getMessage());
+                    }
+                }
+            }
+        }
+        return false;
     }
 
 }

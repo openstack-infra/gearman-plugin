@@ -165,4 +165,8 @@ public abstract class AbstractWorkerThread implements Runnable {
         // Thread exits
     }
 
+    public boolean isAlive() {
+        return thread.isAlive();
+    }
+
 }
