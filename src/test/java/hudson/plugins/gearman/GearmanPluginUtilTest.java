@@ -18,32 +18,33 @@
 
 package hudson.plugins.gearman;
 
-import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
-import java.util.Set;
+import hudson.model.Computer;
+import hudson.slaves.DumbSlave;
 
 import org.gearman.common.GearmanNIOJobServerConnection;
 import org.gearman.worker.GearmanWorker;
+import org.gearman.worker.GearmanWorkerImpl;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.jvnet.hudson.test.HudsonTestCase;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 
 /**
- * Test for the {@link ManagementWorkerThread} class.
+ * Test for the {@link GearmanPluginUtil} class.
  *
  * @author Khai Do
  */
-@PrepareForTest(GearmanWorker.class)
-public class ManagementWorkerThreadTest {
+@PrepareForTest(GearmanWorkerImpl.class)
+public class GearmanPluginUtilTest extends HudsonTestCase {
 
     /**
    */
     @Before
-    public void setUp() {
+    public void setUpTest() {
         GearmanWorker gearmanWorker = mock(GearmanWorker.class);
         GearmanNIOJobServerConnection conn = new GearmanNIOJobServerConnection("localhost", 4730);
         doNothing().when(gearmanWorker).work();
@@ -51,21 +52,24 @@ public class ManagementWorkerThreadTest {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDownTest() throws Exception {
     }
 
     @Test
-    public void testRegisterJobs() {
-        AbstractWorkerThread manager = new ManagementWorkerThread("GearmanServer", 4730, "manager");
-        manager.registerJobs();
-        Set<String> functions = manager.worker.getRegisteredFunctions();
-        assertEquals("stop:GearmanServer", functions.toArray()[0]);
+    public void testGetRealNameSlave() throws Exception {
+
+        DumbSlave slave = createSlave();
+        slave.setNodeName("oneiric-10");
+
+        hudson.removeNode(slave);
+
+        assertEquals("oneiric-10", GearmanPluginUtil.getRealName(slave));
     }
 
     @Test
-    public void testManagerId() {
-        AbstractWorkerThread manager = new ManagementWorkerThread("GearmanServer", 4730, "manager");
-        assertEquals("manager", manager.getName());
+    public void testGetRealNameMaster() throws Exception {
+
+        assertEquals("master", GearmanPluginUtil.getRealName(Computer.currentComputer().getNode()));
     }
 
 }

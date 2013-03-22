@@ -48,11 +48,6 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
     private final Node node;
 
     // constructor
-    public ExecutorWorkerThread(String host, int port, Node node) {
-        super(host, port);
-        this.node = node;
-    }
-
     public ExecutorWorkerThread(String host, int port, String name, Node node) {
         super(host, port, name);
         this.node = node;

@@ -19,7 +19,6 @@
 package hudson.plugins.gearman;
 
 import java.util.Date;
-import java.util.UUID;
 
 import org.gearman.common.GearmanNIOJobServerConnection;
 import org.gearman.worker.GearmanWorker;
@@ -47,7 +46,6 @@ public abstract class AbstractWorkerThread implements Runnable {
     protected GearmanWorker worker;
     private final GearmanNIOJobServerConnection conn;
     private Thread thread;
-    private UUID id;
 
     public AbstractWorkerThread(String host, int port) {
         this(host, port, DEFAULT_EXECUTOR_NAME);
@@ -57,7 +55,6 @@ public abstract class AbstractWorkerThread implements Runnable {
         setHost(host);
         setPort(port);
         setName(name);
-        setId(UUID.randomUUID());
         worker = new GearmanWorkerImpl();
         conn = new GearmanNIOJobServerConnection(host, port);
     }
@@ -86,15 +83,6 @@ public abstract class AbstractWorkerThread implements Runnable {
         this.name = name;
     }
 
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-
     /*
      * Register jobs with the gearman worker.
      * This method should be overriden.
@@ -122,8 +110,7 @@ public abstract class AbstractWorkerThread implements Runnable {
 
         if (worker.isRunning()) {
             try {
-                logger.info("---- Stopping " + getName() + ":" + getId().toString() +
-                        " (" + new Date().toString() + ")");
+                logger.info("---- Stopping " + getName() +" (" + new Date().toString() + ")");
                 worker.unregisterAll();
                 worker.shutdown();
             } catch (Exception e) {
@@ -154,8 +141,7 @@ public abstract class AbstractWorkerThread implements Runnable {
     public void run() {
 
         if (!worker.isRunning()) {
-            logger.info("---- Starting Worker "+ getName() + ":" + getId().toString() +
-                    " ("+new Date().toString()+")");
+            logger.info("---- Starting Worker "+ getName() +" ("+new Date().toString()+")");
             worker.setWorkerID(name);
             worker.setJobUniqueIdRequired(true);
             worker.addServer(conn);
