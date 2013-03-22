@@ -26,7 +26,6 @@ import jenkins.model.Jenkins;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -47,7 +46,6 @@ public class GearmanPluginConfigTest {
    */
     @Before
     public void setUp() {
-        TemporaryFolder folder = new TemporaryFolder();
         Jenkins jenkins = mock(Jenkins.class);
         PowerMockito.mockStatic(Jenkins.class);
         when(Jenkins.getInstance()).thenReturn(jenkins);
