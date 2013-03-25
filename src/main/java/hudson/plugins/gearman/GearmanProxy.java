@@ -62,7 +62,7 @@ public class GearmanProxy {
      * @param port the host port
      *
      */
-    public void init_worker(String host, int port) {
+    public void init_worker() {
 
         /*
          * Purpose here is to create a 1:1 mapping of 'gearman worker':'jenkins
@@ -75,10 +75,7 @@ public class GearmanProxy {
              * Spawn management executor worker. This worker does not need any
              * executors. It only needs to work with gearman.
              */
-            ManagementWorkerThread gwt = new ManagementWorkerThread(host, port, host);
-            gwt.registerJobs();
-            gwt.start();
-            gmwtHandles.add(gwt);
+            createManagementWorker();
 
             /*
              * Spawn executors for the jenkins master Need to treat the master
@@ -99,15 +96,7 @@ public class GearmanProxy {
             if (masterNode != null) {
                 Computer computer = masterNode.toComputer();
                 if (computer != null) {
-                    int executors = computer.getExecutors().size();
-                    for (int i = 0; i < executors; i++) {
-                        // create a gearman worker for every executor on the master
-                        ExecutorWorkerThread ewt  = new ExecutorWorkerThread(host, port, "master-exec"
-                                + Integer.toString(i), masterNode);
-                        ewt.registerJobs();
-                        ewt.start();
-                        gewtHandles.add(ewt);
-                    }
+                    createExecutorWorkersOnNode(computer);
                 }
             }
 
@@ -120,15 +109,7 @@ public class GearmanProxy {
                     Computer computer = node.toComputer();
                     if (computer != null) {
                         // create a gearman worker for every executor on the slave
-                        int slaveExecutors = computer.getExecutors().size();
-                        for (int i = 0; i < slaveExecutors; i++) {
-                            ExecutorWorkerThread ewt = new ExecutorWorkerThread(host, port,
-                                    node.getNodeName() + "-exec"
-                                            + Integer.toString(i), node);
-                            ewt.registerJobs();
-                            ewt.start();
-                            gewtHandles.add(ewt);
-                        }
+                        createExecutorWorkersOnNode(computer);
                     }
                 }
             }
@@ -137,6 +118,44 @@ public class GearmanProxy {
         logger.info("---- Num of executors running = " + getNumExecutors());
     }
 
+    /*
+     * Spawn management executor worker. This worker does not need any
+     * executors. It only needs to work with gearman.
+     */
+    public static void createManagementWorker() {
+
+        ManagementWorkerThread gwt = new ManagementWorkerThread(
+                GearmanPluginConfig.get().getHost(),
+                GearmanPluginConfig.get().getPort(),
+                "master-manager");
+        gwt.registerJobs();
+        gwt.start();
+        gmwtHandles.add(gwt);
+
+    }
+
+    /*
+     * Spawn workers for each executor on a node.
+     */
+    public static void createExecutorWorkersOnNode(Computer computer) {
+
+        Node node = computer.getNode();
+
+        int executors = computer.getExecutors().size();
+        for (int i = 0; i < executors; i++) {
+            ExecutorWorkerThread ewt;
+
+            ewt  = new ExecutorWorkerThread(GearmanPluginConfig.get().getHost(),
+                    GearmanPluginConfig.get().getPort(),
+                    GearmanPluginUtil.getRealName(node)+"-exec-"+Integer.toString(i),
+                    node);
+
+            ewt.registerJobs();
+            ewt.start();
+            gewtHandles.add(ewt);
+
+        }
+    }
 
     /*
      * This method stops all gearman workers

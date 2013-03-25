@@ -111,12 +111,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
         /*
          * make this node build this project with unique id and build params from the client
          */
-
-        // set the name of the node to execute build on
-        String runNodeName = node.getNodeName();
-        if (runNodeName.isEmpty()) { // master node name is ""
-            runNodeName = "master";
-        }
+        String runNodeName = GearmanPluginUtil.getRealName(node);
 
         // create action to run on a specified node
         Action runNode = new NodeAssignmentAction(runNodeName);

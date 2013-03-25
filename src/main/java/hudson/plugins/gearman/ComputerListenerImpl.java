@@ -20,7 +20,6 @@ package hudson.plugins.gearman;
 import hudson.Extension;
 import hudson.model.TaskListener;
 import hudson.model.Computer;
-import hudson.model.Node;
 import hudson.slaves.ComputerListener;
 
 import java.io.IOException;
@@ -104,49 +103,21 @@ public class ComputerListenerImpl extends ComputerListener {
              * Spawn management executor worker. This worker does not need any
              * executors. It only needs to work with gearman.
              */
-            String host = GearmanPluginConfig.get().getHost();
-            int port = GearmanPluginConfig.get().getPort();
-
-            ManagementWorkerThread mwt = new ManagementWorkerThread(host, port, host);
-            mwt.registerJobs();
-            mwt.start();
-            GearmanProxy.getGmwtHandles().add(mwt);
+            GearmanProxy.createManagementWorker();
 
             /*
              * Spawn executors for the jenkins master Need to treat the master
              * differently than slaves because the master is not the same as a
              * slave
              */
-            Node masterNode = c.getNode();
-            int executors = c.getExecutors().size();
-            for (int i = 0; i < executors; i++) {
-                // create a gearman worker for every executor on the master
-                ExecutorWorkerThread ewt = new ExecutorWorkerThread(GearmanPluginConfig.get().getHost(),
-                        GearmanPluginConfig.get().getPort(),
-                        "master-exec"+ Integer.toString(i),
-                        masterNode);
-                ewt.registerJobs();
-                ewt.start();
-                GearmanProxy.getGewtHandles().add(ewt);
-            }
+            GearmanProxy.createExecutorWorkersOnNode(c);
         }
 
         // on creation of new slave
         if (Computer.currentComputer() != c
                 && !GearmanProxy.getGewtHandles().contains(c)) {
 
-              Node node = c.getNode();
-              int slaveExecutors = c.getExecutors().size();
-              // create a gearman worker for every executor on the slave
-              for (int i = 0; i < slaveExecutors; i++) {
-                  ExecutorWorkerThread gwt = new ExecutorWorkerThread(
-                          GearmanPluginConfig.get().getHost(),
-                          GearmanPluginConfig.get().getPort(), node.getNodeName()
-                                  + "-exec" + Integer.toString(i), node);
-                  gwt.registerJobs();
-                  gwt.start();
-                  GearmanProxy.getGewtHandles().add(gwt);
-              }
+            GearmanProxy.createExecutorWorkersOnNode(c);
         }
     }
 }

@@ -109,7 +109,7 @@ public class GearmanPluginConfig extends GlobalConfiguration {
                         "host");
             }
 
-            gearmanProxy.init_worker(host, port);
+            gearmanProxy.init_worker();
 
         } else {
             gearmanProxy.stop_all();

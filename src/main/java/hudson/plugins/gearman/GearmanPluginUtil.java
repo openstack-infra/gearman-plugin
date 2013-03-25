@@ -18,39 +18,41 @@
 
 package hudson.plugins.gearman;
 
-import org.gearman.worker.DefaultGearmanFunctionFactory;
+import hudson.model.Computer;
+import hudson.model.Node;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
- * This is a thread to run gearman management worker
+ * This class contains some useful utilities for this plugin
  *
  * @author Khai Do
  */
-
-public class ManagementWorkerThread extends AbstractWorkerThread{
+public class GearmanPluginUtil {
 
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
-    public ManagementWorkerThread(String host, int port, String name){
-        super(host, port, name);
-    }
-
-    /**
-     * Register gearman functions on this executor.  This will unregister all
-     * functions before registering new functions.
+    /*
+     * This method returns the real node name.  Master node
+     * by default has an empty string for the name.  But you
+     * need to use "master" to tell jenkins to do stuff,
+     * namely like schedule a build.
      *
-     * This executor only registers one function "stop:$hostname".
+     * @param Node
+     *      The node to lookup
      *
+     * @return
+     *      "master" for the master node or assigned name of the slave node
      */
-    @Override
-    public void registerJobs(){
-        String jobFunctionName = "stop:"+host;
-        logger.info("---- Registering job "+jobFunctionName+" on "+host);
-        worker.registerFunctionFactory(new DefaultGearmanFunctionFactory(jobFunctionName,
-                StopJobWorker.class.getName()));
+    public static String getRealName(Node node) {
+
+        if (Computer.currentComputer() == node.toComputer()) {
+            return "master";
+        } else {
+            return node.getNodeName();
+        }
     }
 
 }
