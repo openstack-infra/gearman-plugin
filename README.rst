@@ -1,34 +1,40 @@
-Installation
+Overview
+========
+This plugin uses Gearman to support multiple Jenkins masters.
+More info can be found at https://wiki.jenkins-ci.org/display/JENKINS/Gearman+Plugin
+
+Contributing
 ============
+If you would like to contribute to the development of OpenStack,
+you must follow the steps in the "If you're a developer, start here"
+section of this page:
 
-The plugin can be installed like any other Jenkins plugin.  Please refer to the Jenkins documentation on installing plugins.
+   http://wiki.openstack.org/HowToContribute
 
-Configuration
-=============
+Once those steps have been completed, changes to OpenStack
+should be submitted for review via the Gerrit tool, following
+the workflow documented at:
 
-Configuration of the plugin can be done on the Jenkins configure page (i.e. http://localhost:8080/configure). Click on the help if needed. 
+   http://wiki.openstack.org/GerritWorkflow
 
-Developers
-==========
+Pull requests submitted through GitHub will be ignored.
+
 Project site:
 
- * https://wiki.jenkins-ci.org/display/JENKINS/Gearman+Plugin
-
-Bug report:
-
- * https://bugs.launchpad.net/~gearman-plugin-core
-
-Cloning:
-
- * https://github.com/openstack-infra/gearman-plugin.git
+ * https://launchpad.net/gearman-plugin
 
 Patches are submitted via Gerrit at:
 
  * https://review.openstack.org/
 
-More details on how you can contribute is available on our wiki at:
+Bugs should be filed on Launchpad, not GitHub:
 
- * http://wiki.openstack.org/HowToContribute
+   https://bugs.launchpad.net/gearman-plugin
+
+Cloning:
+
+ * https://github.com/openstack-infra/gearman-plugin.git
+
 
 License
 =======

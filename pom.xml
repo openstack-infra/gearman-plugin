@@ -32,6 +32,7 @@
     <version>0.0.1-SNAPSHOT</version>
 
     <name>Gearman Plugin</name>
+    <description>Integrates Gearman application framework with Jenkins</description>
     <url>http://wiki.jenkins-ci.org/display/JENKINS/Gearman+Plugin</url>
 
     <licenses>
