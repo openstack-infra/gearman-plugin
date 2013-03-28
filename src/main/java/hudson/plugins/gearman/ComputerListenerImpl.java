@@ -68,13 +68,14 @@ public class ComputerListenerImpl extends ComputerListener {
         }
 
         // remove worker when jenkins slave is deleted or disconnected
-        List<ExecutorWorkerThread> workers = GearmanProxy.getGewtHandles();
+        GearmanProxy gp = GearmanProxy.getInstance();
+        List<AbstractWorkerThread> workers = gp.getGewtHandles();
         synchronized(workers) {
             for (AbstractWorkerThread worker : workers) {
                 if (worker.name.contains(c.getName())) {
                     logger.info("---- stopping executor worker = "
                               + worker.getName());
-                    GearmanProxy.getGewtHandles().remove(worker);
+                    gp.getGewtHandles().remove(worker);
                     worker.stop();
                 }
             }
@@ -96,6 +97,7 @@ public class ComputerListenerImpl extends ComputerListener {
         }
 
         // on creation of master
+        GearmanProxy gp = GearmanProxy.getInstance();
         if (Computer.currentComputer() == c) { //check to see if this is master
             logger.info("---- This is master node, name is = "+c.getName());
 
@@ -103,21 +105,21 @@ public class ComputerListenerImpl extends ComputerListener {
              * Spawn management executor worker. This worker does not need any
              * executors. It only needs to work with gearman.
              */
-            GearmanProxy.createManagementWorker();
+            gp.createManagementWorker();
 
             /*
              * Spawn executors for the jenkins master Need to treat the master
              * differently than slaves because the master is not the same as a
              * slave
              */
-            GearmanProxy.createExecutorWorkersOnNode(c);
+            gp.createExecutorWorkersOnNode(c);
         }
 
         // on creation of new slave
         if (Computer.currentComputer() != c
-                && !GearmanProxy.getGewtHandles().contains(c)) {
+                && !gp.getGewtHandles().contains(c)) {
 
-            GearmanProxy.createExecutorWorkersOnNode(c);
+            gp.createExecutorWorkersOnNode(c);
         }
     }
 }

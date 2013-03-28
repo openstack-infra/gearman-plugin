@@ -61,7 +61,7 @@ public class SaveableListenerImpl extends SaveableListener {
         // update for when any changes are applied to a project or node
         boolean doUpdate = o instanceof Node || o instanceof AbstractProject;
         if (doUpdate) {
-            List<ExecutorWorkerThread> workers = GearmanProxy.getGewtHandles();
+            List<AbstractWorkerThread> workers = GearmanProxy.getInstance().getGewtHandles();
             synchronized(workers) {
                 if (!workers.isEmpty()) {
                     for (AbstractWorkerThread worker : workers) {

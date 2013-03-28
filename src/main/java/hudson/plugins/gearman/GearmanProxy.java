@@ -38,29 +38,31 @@ import org.slf4j.LoggerFactory;
  */
 public class GearmanProxy {
 
+    private static GearmanProxy gearmanProxy;
+
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
     // handles to gearman workers
-    private static List<ExecutorWorkerThread> gewtHandles;
-    private static List<ManagementWorkerThread> gmwtHandles;
+    private final List<AbstractWorkerThread> gewtHandles;
+    private final List<AbstractWorkerThread> gmwtHandles;
+
+    public static synchronized GearmanProxy getInstance() {
+        if (gearmanProxy == null) {
+            gearmanProxy = new GearmanProxy();
+        }
+        return gearmanProxy;
+    }
 
     // constructor
-    public GearmanProxy() {
-        logger.info("---- GearmanProxy Constructor ---");
-
-        gewtHandles = Collections.synchronizedList(new ArrayList<ExecutorWorkerThread>());
-        gmwtHandles = Collections.synchronizedList(new ArrayList<ManagementWorkerThread>());
+    private GearmanProxy() {
+        gewtHandles = Collections.synchronizedList(new ArrayList<AbstractWorkerThread>());
+        gmwtHandles = Collections.synchronizedList(new ArrayList<AbstractWorkerThread>());
     }
 
 
     /*
      * This method initializes the  gearman workers.
-     *
-     * @param host the host name
-     *
-     * @param port the host port
-     *
      */
     public void init_worker() {
 
@@ -122,9 +124,9 @@ public class GearmanProxy {
      * Spawn management executor worker. This worker does not need any
      * executors. It only needs to work with gearman.
      */
-    public static void createManagementWorker() {
+    public void createManagementWorker() {
 
-        ManagementWorkerThread gwt = new ManagementWorkerThread(
+        AbstractWorkerThread gwt = new ManagementWorkerThread(
                 GearmanPluginConfig.get().getHost(),
                 GearmanPluginConfig.get().getPort(),
                 "master-manager");
@@ -137,15 +139,14 @@ public class GearmanProxy {
     /*
      * Spawn workers for each executor on a node.
      */
-    public static void createExecutorWorkersOnNode(Computer computer) {
+    public void createExecutorWorkersOnNode(Computer computer) {
 
         Node node = computer.getNode();
 
         int executors = computer.getExecutors().size();
         for (int i = 0; i < executors; i++) {
-            ExecutorWorkerThread ewt;
 
-            ewt  = new ExecutorWorkerThread(GearmanPluginConfig.get().getHost(),
+            ExecutorWorkerThread ewt  = new ExecutorWorkerThread(GearmanPluginConfig.get().getHost(),
                     GearmanPluginConfig.get().getPort(),
                     GearmanPluginUtil.getRealName(node)+"-exec-"+Integer.toString(i),
                     node);
@@ -189,14 +190,14 @@ public class GearmanProxy {
     /*
      * This method returns the list of gearman executor workers
      */
-    public static synchronized List<ExecutorWorkerThread> getGewtHandles() {
+    public synchronized List<AbstractWorkerThread> getGewtHandles() {
         return gewtHandles;
     }
 
     /*
      * This method returns the list of gearman management workers
      */
-    public static synchronized List<ManagementWorkerThread> getGmwtHandles() {
+    public synchronized List<AbstractWorkerThread> getGmwtHandles() {
         return gmwtHandles;
     }
 

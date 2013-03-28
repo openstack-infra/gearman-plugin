@@ -51,7 +51,6 @@ public class GearmanPluginConfig extends GlobalConfiguration {
     private boolean launchWorker; // enable/disable plugin
     private String host; // gearman server host
     private int port; // gearman server port
-    private final GearmanProxy gearmanProxy;
 
     /**
      * Constructor.
@@ -59,7 +58,6 @@ public class GearmanPluginConfig extends GlobalConfiguration {
     public GearmanPluginConfig() {
         logger.info("---- GearmanPluginConfig Constructor ---");
 
-        gearmanProxy = new GearmanProxy();
         load();
     }
 
@@ -109,10 +107,10 @@ public class GearmanPluginConfig extends GlobalConfiguration {
                         "host");
             }
 
-            gearmanProxy.init_worker();
+            GearmanProxy.getInstance().init_worker();
 
         } else {
-            gearmanProxy.stop_all();
+            GearmanProxy.getInstance().stop_all();
         }
 
         req.bindJSON(this, json);
