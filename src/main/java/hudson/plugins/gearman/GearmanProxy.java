@@ -47,6 +47,7 @@ public class GearmanProxy {
     private final List<AbstractWorkerThread> gewtHandles;
     private final List<AbstractWorkerThread> gmwtHandles;
 
+    // Singleton instance
     public static synchronized GearmanProxy getInstance() {
         if (gearmanProxy == null) {
             gearmanProxy = new GearmanProxy();
@@ -64,7 +65,7 @@ public class GearmanProxy {
     /*
      * This method initializes the  gearman workers.
      */
-    public void init_worker() {
+    public void initWorkers() {
 
         /*
          * Purpose here is to create a 1:1 mapping of 'gearman worker':'jenkins
@@ -161,7 +162,7 @@ public class GearmanProxy {
     /*
      * This method stops all gearman workers
      */
-    public void stop_all() {
+    public void stopAll() {
         // stop gearman executors
         synchronized(gewtHandles) {
             for (AbstractWorkerThread gewtHandle : gewtHandles) { // stop executors

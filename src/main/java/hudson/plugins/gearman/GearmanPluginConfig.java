@@ -107,10 +107,10 @@ public class GearmanPluginConfig extends GlobalConfiguration {
                         "host");
             }
 
-            GearmanProxy.getInstance().init_worker();
+            GearmanProxy.getInstance().initWorkers();
 
         } else {
-            GearmanProxy.getInstance().stop_all();
+            GearmanProxy.getInstance().stopAll();
         }
 
         req.bindJSON(this, json);
