@@ -28,8 +28,10 @@ import hudson.model.Node;
 import hudson.model.Project;
 import hudson.model.Queue;
 import hudson.model.Queue.Executable;
+import hudson.model.queue.QueueTaskFuture;
 import hudson.model.StringParameterValue;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +39,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import org.gearman.common.GearmanJobServerSession;
+import org.gearman.client.GearmanIOEventListener;
 import org.gearman.client.GearmanJobResult;
 import org.gearman.client.GearmanJobResultImpl;
 import org.gearman.worker.AbstractGearmanFunction;
@@ -123,7 +127,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
         logger.info("---- Scheduling "+project.getName()+" build #" +
                 project.getNextBuildNumber()+" on " + runNodeName
                 + " with UUID " + decodedUniqueId + " and build params " + buildParams);
-        Future<?> future = project.scheduleBuild2(0, new Cause.UserIdCause(), actions);
+        QueueTaskFuture<?> future = project.scheduleBuild2(0, new Cause.UserIdCause(), actions);
 
         // check build and pass results back to client
         boolean jobResult = true;
@@ -131,12 +135,46 @@ public class StartJobWorker extends AbstractGearmanFunction {
         String jobWarningMsg = "";
         String jobResultMsg = "";
 
+        // This is a hack that relies on implementation knowledge.  In
+        // order to actually send a WORK_STATUS packet before the
+        // completion of work, we need to directly drive the session
+        // IO, which requires a session object.  We happen to know
+        // that's what our event listener is.
+        GearmanJobServerSession sess = null;
+
+        for (GearmanIOEventListener listener : listeners) {
+            if (listener instanceof GearmanJobServerSession) {
+                sess = (GearmanJobServerSession)listener;
+            }
+        }
+
         try {
+            // wait for start of build
+            Queue.Executable exec = (Executable) future.getStartCondition().get();
+            AbstractBuild<?, ?> currBuild = (AbstractBuild<?, ?>) exec;
+
+
+            int duration = (int) currBuild.getDuration();
+            int estimatedDuration = (int) currBuild.getEstimatedDuration();
+
+            // If we found a session object in the hacky bit above,
+            // use it to send a WORK_STATUS packet indicating the
+            // start of the build.
+            if (sess != null) {
+                try {
+                    sendStatus(estimatedDuration, duration);
+                    sess.driveSessionIO();
+                } catch (IOException e) {
+                    sess = null;
+                    logger.warn("IO Exception when driving session IO");
+                    e.printStackTrace();
+                }
+            }
+
             // wait for jenkins build to complete
-            Queue.Executable exec = (Executable) future.get();
+            exec = (Executable) future.get();
 
             // check Jenkins build results
-            AbstractBuild<?, ?> currBuild = (AbstractBuild<?, ?>) exec;
             String buildId = currBuild.getId();
             int buildNum = currBuild.number;
             Result result = currBuild.getResult();
