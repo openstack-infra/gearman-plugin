@@ -18,9 +18,6 @@
 
 package hudson.plugins.gearman;
 
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import hudson.maven.MavenModuleSet;
 import hudson.model.Project;
 import hudson.model.labels.LabelAtom;
@@ -28,36 +25,33 @@ import hudson.slaves.DumbSlave;
 
 import java.util.Set;
 
-import org.gearman.common.GearmanNIOJobServerConnection;
-import org.gearman.worker.GearmanWorker;
-import org.gearman.worker.GearmanWorkerImpl;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.jvnet.hudson.test.HudsonTestCase;
-import org.powermock.core.classloader.annotations.PrepareForTest;
 
 /**
  * Test for the {@link ExecutorWorkerThread} class.
  *
  * @author Khai Do
  */
-@PrepareForTest(MyGearmanWorkerImpl.class)
 public class ExecutorWorkerThreadTest extends HudsonTestCase {
 
     DumbSlave slave = null;
 
+    @Override
     @Before
-    public void setUpTest() throws Exception {
-        // mock out GearmanWorker
-        MyGearmanWorkerImpl gearmanWorker = mock(MyGearmanWorkerImpl.class);
-        GearmanNIOJobServerConnection conn = new GearmanNIOJobServerConnection("localhost", 4730);
-        doNothing().when(gearmanWorker).work();
-        when(gearmanWorker.addServer(conn)).thenReturn(true);
+    public void setUp() throws Exception {
+        super.setUp();
+        slave = createOnlineSlave(new LabelAtom("oneiric-10"));
+        slave.setLabelString("ubuntu gcc python-2.4 linux");
     }
 
+    @Override
     @After
-    public void tearDownTest() {
+    public void tearDown() throws Exception {
+        hudson.removeNode(slave);
+        super.tearDown();
     }
 
     /*
@@ -67,9 +61,6 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
     @Test
     public void testRegisterJobs_NodeSelfLabel() throws Exception {
 
-        slave = createOnlineSlave(new LabelAtom("oneiric-10"));
-        DumbSlave slave = createOnlineSlave(new LabelAtom("oneiric-10"));
-        slave.setLabelString("ubuntu gcc python-2.4 linux");
 
         Project<?, ?> apple = createFreeStyleProject("apple");
         apple.setAssignedLabel(new LabelAtom("oneiric-10"));
@@ -77,8 +68,6 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
-
-        hudson.removeNode(slave);
 
         assertEquals(2, functions.size());
         assertTrue(functions.contains("build:apple"));
@@ -93,17 +82,12 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
     @Test
     public void testRegisterJobs_ProjectSingleLabel() throws Exception {
 
-        DumbSlave slave = createOnlineSlave(new LabelAtom("oneiric-10"));
-        slave.setLabelString("ubuntu gcc python-2.4 linux");
-
         Project<?, ?> lemon = createFreeStyleProject("lemon");
         lemon.setAssignedLabel(new LabelAtom("linux"));
 
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
-
-        hudson.removeNode(slave);
 
         assertEquals(2, functions.size());
         assertTrue(functions.contains("build:lemon"));
@@ -118,17 +102,12 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
     @Test
     public void testRegisterJobs_ProjectInvalidLabel() throws Exception {
 
-        DumbSlave slave = createOnlineSlave(new LabelAtom("oneiric-10"));
-        slave.setLabelString("ubuntu gcc python-2.4 linux");
-
         Project<?, ?> lemon = createFreeStyleProject("lemon");
         lemon.setAssignedLabel(new LabelAtom("bogus"));
 
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
-
-        hudson.removeNode(slave);
 
         assertEquals(0, functions.size());
 
@@ -141,16 +120,11 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
     @Test
     public void testRegisterJobs_ProjectNoLabel() throws Exception {
 
-        DumbSlave slave = createOnlineSlave(new LabelAtom("oneiric-10"));
-        slave.setLabelString("ubuntu gcc python-2.4 linux");
-
         Project<?, ?> lemon = createFreeStyleProject("lemon");
 
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
-
-        hudson.removeNode(slave);
 
         assertEquals(1, functions.size());
         assertTrue(functions.contains("build:lemon"));
@@ -164,9 +138,6 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
     @Test
     public void testRegisterJobs_ProjectDisabled() throws Exception {
 
-        DumbSlave slave = createOnlineSlave(new LabelAtom("oneiric-10"));
-        slave.setLabelString("ubuntu gcc python-2.4 linux");
-
         Project<?, ?> lemon = createFreeStyleProject("lemon");
         lemon.setAssignedLabel(new LabelAtom("linux"));
         lemon.disable();
@@ -174,8 +145,6 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
-
-        hudson.removeNode(slave);
 
         assertEquals(0, functions.size());
 
@@ -188,17 +157,15 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
     @Test
     public void testRegisterJobs_SlaveOffline() throws Exception {
 
-        DumbSlave slave = createSlave(new LabelAtom("oneiric-10"));
-        slave.setLabelString("ubuntu gcc python-2.4 linux");
+        DumbSlave offlineSlave = createSlave(new LabelAtom("oneiric-10"));
+        offlineSlave.setLabelString("ubuntu gcc python-2.4 linux");
 
         Project<?, ?> lemon = createFreeStyleProject("lemon");
         lemon.setAssignedLabel(new LabelAtom("linux"));
 
-        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
+        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", offlineSlave);
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
-
-        hudson.removeNode(slave);
 
         assertEquals(0, functions.size());
 
@@ -211,17 +178,12 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
     @Test
     public void testRegisterJobs_MavenProject() throws Exception {
 
-        DumbSlave slave = createOnlineSlave(new LabelAtom("oneiric-10"));
-        slave.setLabelString("ubuntu gcc python-2.4 linux");
-
         MavenModuleSet lemon = createMavenProject("lemon");
         lemon.setAssignedLabel(new LabelAtom("linux"));
 
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
-
-        hudson.removeNode(slave);
 
         assertEquals(2, functions.size());
         assertTrue(functions.contains("build:lemon"));
@@ -236,8 +198,6 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
     @Test
     public void testRegisterJobs_ProjectNotLabel() throws Exception {
 
-        DumbSlave slave = createOnlineSlave(new LabelAtom("oneiric-10"));
-        slave.setLabelString("ubuntu gcc python-2.4 linux");
 
         Project<?, ?> lemon = createFreeStyleProject("lemon");
         lemon.setAssignedLabel(new LabelAtom("!linux"));
@@ -245,8 +205,6 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
-
-        hudson.removeNode(slave);
 
         assertEquals(0, functions.size());
     }

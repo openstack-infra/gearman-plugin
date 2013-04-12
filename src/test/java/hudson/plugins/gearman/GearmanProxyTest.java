@@ -20,6 +20,8 @@ package hudson.plugins.gearman;
 
 import hudson.slaves.DumbSlave;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.jvnet.hudson.test.HudsonTestCase;
 
@@ -30,7 +32,22 @@ import org.jvnet.hudson.test.HudsonTestCase;
  */
 public class GearmanProxyTest extends HudsonTestCase {
 
-    GearmanProxy gp = GearmanProxy.getInstance();
+    GearmanProxy gp;
+
+    @Override
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        gp = GearmanProxy.getInstance();
+    }
+
+    @Override
+    @After
+    public void tearDown() throws Exception {
+        gp.getGmwtHandles().clear();
+        gp.getGewtHandles().clear();
+        super.tearDown();
+    }
 
     @Test
     public void testGetNumExecutors() throws Exception {
@@ -48,8 +65,6 @@ public class GearmanProxyTest extends HudsonTestCase {
         gp.getGewtHandles().add(new ManagementWorkerThread("localhost", 4730, "manage-exec-2"));
 
         assertEquals(4, gp.getNumExecutors());
-
-        gp.getGewtHandles().clear();
     }
 
     @Test
@@ -61,7 +76,6 @@ public class GearmanProxyTest extends HudsonTestCase {
 
         assertEquals(1, gp.getGmwtHandles().size());
         assertTrue(gp.getGmwtHandles().get(0).isAlive());
-        gp.getGmwtHandles().clear();
     }
 
     @Test
@@ -73,8 +87,6 @@ public class GearmanProxyTest extends HudsonTestCase {
 
         gp.createExecutorWorkersOnNode(slave.toComputer());
         assertEquals(1, gp.getGewtHandles().size());
-
-        gp.getGewtHandles().clear();
     }
 
     @Test
@@ -83,9 +95,6 @@ public class GearmanProxyTest extends HudsonTestCase {
         gp.initWorkers();
 
         assertEquals(2, gp.getGewtHandles().size());
-
-        gp.getGmwtHandles().clear();
-        gp.getGewtHandles().clear();
     }
 
     @Test
@@ -95,8 +104,5 @@ public class GearmanProxyTest extends HudsonTestCase {
         gp.initWorkers();
 
         assertEquals(3, gp.getGewtHandles().size());
-
-        gp.getGmwtHandles().clear();
-        gp.getGewtHandles().clear();
     }
 }

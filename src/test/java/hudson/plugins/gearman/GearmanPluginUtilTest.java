@@ -18,42 +18,19 @@
 
 package hudson.plugins.gearman;
 
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import hudson.model.Computer;
 import hudson.slaves.DumbSlave;
 
-import org.gearman.common.GearmanNIOJobServerConnection;
-import org.gearman.worker.GearmanWorker;
-import org.gearman.worker.GearmanWorkerImpl;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.jvnet.hudson.test.HudsonTestCase;
-import org.powermock.core.classloader.annotations.PrepareForTest;
 
 /**
  * Test for the {@link GearmanPluginUtil} class.
  *
  * @author Khai Do
  */
-@PrepareForTest(GearmanWorkerImpl.class)
 public class GearmanPluginUtilTest extends HudsonTestCase {
 
-    /**
-   */
-    @Before
-    public void setUpTest() {
-        GearmanWorker gearmanWorker = mock(GearmanWorker.class);
-        GearmanNIOJobServerConnection conn = new GearmanNIOJobServerConnection("localhost", 4730);
-        doNothing().when(gearmanWorker).work();
-        when(gearmanWorker.addServer(conn)).thenReturn(true);
-    }
-
-    @After
-    public void tearDownTest() throws Exception {
-    }
 
     @Test
     public void testGetRealNameSlave() throws Exception {
