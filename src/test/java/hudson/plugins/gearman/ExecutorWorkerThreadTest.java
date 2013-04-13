@@ -42,7 +42,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
  *
  * @author Khai Do
  */
-@PrepareForTest(GearmanWorkerImpl.class)
+@PrepareForTest(MyGearmanWorkerImpl.class)
 public class ExecutorWorkerThreadTest extends HudsonTestCase {
 
     DumbSlave slave = null;
@@ -50,10 +50,9 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
     @Before
     public void setUpTest() throws Exception {
         // mock out GearmanWorker
-        GearmanWorker gearmanWorker = mock(GearmanWorker.class);
+        MyGearmanWorkerImpl gearmanWorker = mock(MyGearmanWorkerImpl.class);
         GearmanNIOJobServerConnection conn = new GearmanNIOJobServerConnection("localhost", 4730);
         doNothing().when(gearmanWorker).work();
-        doNothing().when(gearmanWorker).unregisterAll();
         when(gearmanWorker.addServer(conn)).thenReturn(true);
     }
 

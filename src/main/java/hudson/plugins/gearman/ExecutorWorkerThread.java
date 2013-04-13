@@ -22,12 +22,15 @@ import hudson.model.AbstractProject;
 import hudson.model.Label;
 import hudson.model.Node;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
 
 import jenkins.model.Jenkins;
+
+import org.gearman.worker.GearmanFunctionFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +50,13 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
 
     private final Node node;
 
+    private HashMap<String,GearmanFunctionFactory> functionMap;
+
     // constructor
     public ExecutorWorkerThread(String host, int port, String name, Node node) {
         super(host, port, name);
         this.node = node;
+        this.functionMap = new HashMap<String,GearmanFunctionFactory>();
     }
 
     /**
@@ -129,66 +135,56 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
      */
     @Override
     public void registerJobs() {
+        HashMap<String,GearmanFunctionFactory> newFunctionMap = new HashMap<String,GearmanFunctionFactory>();
 
-        logger.info("---- Registering executor jobs on " + name + " ----");
+        if (!this.node.toComputer().isOffline()) {
+            List<AbstractProject> allProjects = Jenkins.getInstance().getAllItems(AbstractProject.class);
+            for (AbstractProject<?, ?> project : allProjects) {
 
-        /*
-         * We start with an empty worker.
-         */
-        worker.unregisterAll();
+                if (project.isDisabled()) { // ignore all disabled projects
+                    continue;
+                }
 
-        if (this.node.toComputer().isOffline()) {
-            return;
-        }
-        /*
-         * Now register or re-register all functions.
-         */
-        List<AbstractProject> allProjects = Jenkins.getInstance().getAllItems(AbstractProject.class);
-        for (AbstractProject<?, ?> project : allProjects) {
+                String projectName = project.getName();
+                Label label = project.getAssignedLabel();
 
-            if (project.isDisabled()) { // ignore all disabled projects
-                continue;
-            }
+                if (label == null) { // project has no label -> so register
+                                     // "build:projectName" on all nodes
+                    String jobFunctionName = "build:" + projectName;
+                    newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
+                            jobFunctionName, StartJobWorker.class.getName(),
+                            project, this.node));
+                } else { // register "build:$projectName:$projectLabel" if this
+                         // node matches a node from the project label
 
-            String projectName = project.getName();
-            Label label = project.getAssignedLabel();
-
-            if (label == null) { // project has no label -> so register
-                                 // "build:projectName" on all nodes
-                String jobFunctionName = "build:" + projectName;
-                logger.info("---- Registering job " + jobFunctionName + " on "
-                        + name);
-                worker.registerFunctionFactory(new CustomGearmanFunctionFactory(
-                        jobFunctionName, StartJobWorker.class.getName(),
-                        project, this.node));
-
-            } else { // register "build:$projectName:$projectLabel" if this
-                    // node matches a node from the project label
-
-                Set<Node> projectLabelNodes = label.getNodes();
-                String projectLabelString = label.getExpression();
-                Set<String> projectLabels = tokenizeLabelString(
+                    Set<Node> projectLabelNodes = label.getNodes();
+                    String projectLabelString = label.getExpression();
+                    Set<String> projectLabels = tokenizeLabelString(
                         projectLabelString, "\\|\\|");
 
-                // iterate thru all project labels and find matching nodes
-                for (String projectLabel : projectLabels) {
-                    if (projectLabelNodes.contains(this.node)) {
-                        String jobFunctionName = "build:" + projectName
+                    // iterate thru all project labels and find matching nodes
+                    for (String projectLabel : projectLabels) {
+                        if (projectLabelNodes.contains(this.node)) {
+                            String jobFunctionName = "build:" + projectName
                                 + ":" + projectLabel;
-                        logger.info("---- Registering job " + jobFunctionName
-                                + " on " + this.node.getNodeName());
-                        // register with label (i.e. "build:$projectName:$projectLabel")
-                        worker.registerFunctionFactory(new CustomGearmanFunctionFactory(
-                                jobFunctionName, StartJobWorker.class
-                                        .getName(), project, this.node));
-                        // also register without label (i.e. "build:$projectName")
-                        worker.registerFunctionFactory(new CustomGearmanFunctionFactory(
-                                "build:" + projectName, StartJobWorker.class
-                                        .getName(), project, this.node));
-
+                            // register with label (i.e. "build:$projectName:$projectLabel")
+                            newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
+                                    jobFunctionName, StartJobWorker.class.getName(),
+                                    project, this.node));
+                            jobFunctionName = "build:" + projectName;
+                            // also register without label (i.e. "build:$projectName")
+                            newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
+                                    jobFunctionName, StartJobWorker.class.getName(),
+                                    project, this.node));
+                        }
                     }
                 }
             }
+        }
+        if (!newFunctionMap.keySet().equals(functionMap.keySet())) {
+            functionMap = newFunctionMap;
+            Set<GearmanFunctionFactory> functionSet = new HashSet<GearmanFunctionFactory>(functionMap.values());
+            updateJobs(functionSet);
         }
     }
 

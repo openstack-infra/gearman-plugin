@@ -36,8 +36,11 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Date;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.TimeUnit;
 
 import org.gearman.common.GearmanJobServerSession;
 import org.gearman.client.GearmanIOEventListener;
@@ -153,8 +156,8 @@ public class StartJobWorker extends AbstractGearmanFunction {
             Queue.Executable exec = (Executable) future.getStartCondition().get();
             AbstractBuild<?, ?> currBuild = (AbstractBuild<?, ?>) exec;
 
-
-            int duration = (int) currBuild.getDuration();
+            long now = new Date().getTime();
+            int duration = (int) (now - currBuild.getStartTimeInMillis());
             int estimatedDuration = (int) currBuild.getEstimatedDuration();
 
             // If we found a session object in the hacky bit above,
@@ -171,7 +174,27 @@ public class StartJobWorker extends AbstractGearmanFunction {
                 }
             }
 
-            // wait for jenkins build to complete
+            while (!future.isDone()) {
+                // wait for jenkins build to complete
+                try {
+                    future.get(10, TimeUnit.SECONDS);
+                } catch (TimeoutException e) {
+                    now = new Date().getTime();
+                    duration = (int) (now - currBuild.getStartTimeInMillis());
+                    estimatedDuration = (int) currBuild.getEstimatedDuration();
+                    if (sess != null) {
+                        try {
+                            sendStatus(estimatedDuration, duration);
+                            sess.driveSessionIO();
+                        } catch (IOException e2) {
+                            sess = null;
+                            logger.warn("IO Exception when driving session IO");
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+
             exec = (Executable) future.get();
 
             // check Jenkins build results

@@ -19,10 +19,13 @@
 package hudson.plugins.gearman;
 
 import java.util.Date;
+import java.util.Set;
+import java.util.HashSet;
 
+import org.gearman.worker.GearmanFunctionFactory;
 import org.gearman.common.GearmanNIOJobServerConnection;
 import org.gearman.worker.GearmanWorker;
-import org.gearman.worker.GearmanWorkerImpl;
+//import org.gearman.worker.GearmanWorkerImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +46,7 @@ public abstract class AbstractWorkerThread implements Runnable {
     protected String host;
     protected int port;
     protected String name;
-    protected GearmanWorker worker;
+    protected MyGearmanWorkerImpl worker;
     private final GearmanNIOJobServerConnection conn;
     private Thread thread;
 
@@ -55,7 +58,7 @@ public abstract class AbstractWorkerThread implements Runnable {
         setHost(host);
         setPort(port);
         setName(name);
-        worker = new GearmanWorkerImpl();
+        worker = new MyGearmanWorkerImpl();
         conn = new GearmanNIOJobServerConnection(host, port);
     }
 
@@ -93,6 +96,11 @@ public abstract class AbstractWorkerThread implements Runnable {
 
     }
 
+    public void updateJobs(Set<GearmanFunctionFactory> functions) {
+        worker.setFunctions(functions);
+    }
+
+
     /*
      * Start the thread
      */
@@ -111,7 +119,6 @@ public abstract class AbstractWorkerThread implements Runnable {
         if (worker.isRunning()) {
             try {
                 logger.info("---- Stopping " + getName() +" (" + new Date().toString() + ")");
-                worker.unregisterAll();
                 worker.shutdown();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -142,9 +149,10 @@ public abstract class AbstractWorkerThread implements Runnable {
 
         if (!worker.isRunning()) {
             logger.info("---- Starting Worker "+ getName() +" ("+new Date().toString()+")");
+            worker.addServer(conn);
             worker.setWorkerID(name);
             worker.setJobUniqueIdRequired(true);
-            worker.addServer(conn);
+            registerJobs();
             worker.work();
         }
 

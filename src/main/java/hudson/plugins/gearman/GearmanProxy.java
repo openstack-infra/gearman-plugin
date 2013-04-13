@@ -131,7 +131,7 @@ public class GearmanProxy {
                 GearmanPluginConfig.get().getHost(),
                 GearmanPluginConfig.get().getPort(),
                 "master-manager");
-        gwt.registerJobs();
+        //gwt.registerJobs();
         gwt.start();
         gmwtHandles.add(gwt);
 
@@ -152,7 +152,7 @@ public class GearmanProxy {
                     GearmanPluginUtil.getRealName(node)+"-exec-"+Integer.toString(i),
                     node);
 
-            ewt.registerJobs();
+            //ewt.registerJobs();
             ewt.start();
             gewtHandles.add(ewt);
 
