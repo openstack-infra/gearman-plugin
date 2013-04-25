@@ -19,10 +19,12 @@
 
 package hudson.plugins.gearman;
 
+import hudson.model.Hudson;
 import hudson.model.Action;
 import hudson.model.ParameterValue;
 import hudson.model.Result;
 import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
 import hudson.model.Cause;
 import hudson.model.Node;
 import hudson.model.Project;
@@ -35,6 +37,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Date;
 import java.util.concurrent.ExecutionException;
@@ -75,6 +78,30 @@ public class StartJobWorker extends AbstractGearmanFunction {
         this.project = project;
         this.node = node;
     }
+
+   private String buildStatusData(AbstractBuild<?, ?> build) {
+       Hudson hudson = Hudson.getInstance();
+       AbstractProject<?, ?> project = build.getProject();
+
+       Map data = new HashMap<String, String>();
+
+       data.put("name", project.getName());
+       data.put("number", build.getNumber());
+       data.put("id", build.getId());
+       data.put("url", build.getUrl());
+
+       String rootUrl = Hudson.getInstance().getRootUrl();
+       if (rootUrl != null) {
+           data.put("full_url", rootUrl + build.getUrl());
+       }
+
+       Result result = build.getResult();
+       if (result != null) {
+           data.put("result", result.toString());
+       }
+       Gson gson = new Gson();
+       return gson.toJson(data);
+   }
 
     /*
      * The Gearman Function
@@ -135,8 +162,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
         // check build and pass results back to client
         boolean jobResult = true;
         String jobFailureMsg = "";
-        String jobWarningMsg = "";
-        String jobResultMsg = "";
+        String jobData;
 
         // This is a hack that relies on implementation knowledge.  In
         // order to actually send a WORK_STATUS packet before the
@@ -159,12 +185,15 @@ public class StartJobWorker extends AbstractGearmanFunction {
             long now = new Date().getTime();
             int duration = (int) (now - currBuild.getStartTimeInMillis());
             int estimatedDuration = (int) currBuild.getEstimatedDuration();
+            jobData = buildStatusData(currBuild);
 
             // If we found a session object in the hacky bit above,
             // use it to send a WORK_STATUS packet indicating the
             // start of the build.
             if (sess != null) {
                 try {
+                    sendData(jobData.getBytes());
+                    sess.driveSessionIO();
                     sendStatus(estimatedDuration, duration);
                     sess.driveSessionIO();
                 } catch (IOException e) {
@@ -197,27 +226,23 @@ public class StartJobWorker extends AbstractGearmanFunction {
 
             exec = (Executable) future.get();
 
+            jobData = buildStatusData(currBuild);
+            if (sess != null) {
+                try {
+                    sendData(jobData.getBytes());
+                    sess.driveSessionIO();
+                } catch (IOException e) {
+                    sess = null;
+                    logger.warn("IO Exception when driving session IO");
+                    e.printStackTrace();
+                }
+            }
+
             // check Jenkins build results
-            String buildId = currBuild.getId();
-            int buildNum = currBuild.number;
             Result result = currBuild.getResult();
             if (result == Result.SUCCESS) {
-                jobResultMsg = "Build Success : "+buildNum+": "+buildId+" on " + runNodeName
-                        + " with UUID " + decodedUniqueId + " and build params " + buildParams;
-            } else if (result == Result.ABORTED) {
-                jobResultMsg = "Build Aborted : "+buildNum+": "+buildId+" on " + runNodeName
-                        + " with UUID " + decodedUniqueId + " and build params " + buildParams;
-            } else if (result == Result.UNSTABLE) {
-                jobFailureMsg = "Build Unstable : "+buildNum+": "+buildId+" on " + runNodeName
-                        + " with UUID " + decodedUniqueId + " and build params " + buildParams;
-                jobResult = false;
-            } else if (result == Result.FAILURE) {
-                jobFailureMsg = "Build failed : "+buildNum+": "+buildId+" on " + runNodeName
-                        + " with UUID " + decodedUniqueId + " and build params " + buildParams;
-                jobResult = false;
-            } else if (result == Result.NOT_BUILT) {
-                jobWarningMsg = "Build not done : "+buildNum+": "+buildId+" on " + runNodeName
-                        + " with UUID " + decodedUniqueId + " and build params " + buildParams;
+                jobResult = true;
+            } else {
                 jobResult = false;
             }
 
@@ -231,7 +256,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
 
         // return result to client
         GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, jobResult,
-                jobResultMsg.getBytes(), jobWarningMsg.getBytes(),
+                "".getBytes(), "".getBytes(),
                 jobFailureMsg.getBytes(), 0, 0);
         return gjr;
     }
