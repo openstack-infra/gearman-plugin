@@ -39,8 +39,11 @@ public class ManagementWorkerThread extends AbstractWorkerThread{
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
     private boolean registered = false;
-    public ManagementWorkerThread(String host, int port, String name){
+    private final String masterName;
+
+    public ManagementWorkerThread(String host, int port, String name, String masterName){
         super(host, port, name);
+        this.masterName = masterName;
     }
 
     /**
@@ -53,7 +56,7 @@ public class ManagementWorkerThread extends AbstractWorkerThread{
     @Override
     public void registerJobs(){
         if (!registered) {
-            String jobFunctionName = "stop:"+host;
+            String jobFunctionName = "stop:"+masterName;
             logger.info("---- Registering job "+jobFunctionName+" on "+host);
             Set<GearmanFunctionFactory> functionSet = new HashSet<GearmanFunctionFactory>();
 

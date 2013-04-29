@@ -49,13 +49,16 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
     private final Node node;
+    private final String masterName;
 
     private HashMap<String,GearmanFunctionFactory> functionMap;
 
     // constructor
-    public ExecutorWorkerThread(String host, int port, String name, Node node) {
+    public ExecutorWorkerThread(String host, int port, String name, Node node,
+                                String masterName) {
         super(host, port, name);
         this.node = node;
+        this.masterName = masterName;
         this.functionMap = new HashMap<String,GearmanFunctionFactory>();
     }
 
@@ -153,7 +156,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
                     String jobFunctionName = "build:" + projectName;
                     newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
                             jobFunctionName, StartJobWorker.class.getName(),
-                            project, this.node));
+                            project, this.node, this.masterName));
                 } else { // register "build:$projectName:$projectLabel" if this
                          // node matches a node from the project label
 
@@ -170,12 +173,12 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
                             // register with label (i.e. "build:$projectName:$projectLabel")
                             newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
                                     jobFunctionName, StartJobWorker.class.getName(),
-                                    project, this.node));
+                                    project, this.node, this.masterName));
                             jobFunctionName = "build:" + projectName;
                             // also register without label (i.e. "build:$projectName")
                             newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
                                     jobFunctionName, StartJobWorker.class.getName(),
-                                    project, this.node));
+                                    project, this.node, this.masterName));
                         }
                     }
                 }

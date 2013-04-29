@@ -42,35 +42,38 @@ public class CustomGearmanFunctionFactory extends DefaultGearmanFunctionFactory 
     private final AbstractProject<?,?> project;
     private final Node node;
     private final String theClass;
+    private final String masterName;
 
     private static final org.slf4j.Logger LOG =  LoggerFactory.getLogger(
             Constants.GEARMAN_WORKER_LOGGER_NAME);
 
     public CustomGearmanFunctionFactory(String functionName, String className,
-            AbstractProject<?,?> project, Node node) {
+                                        AbstractProject<?,?> project, Node node,
+                                        String masterName) {
         super(functionName, className);
         this.theClass = className;
         this.project = project;
         this.node = node;
+        this.masterName = masterName;
     }
 
 
     @Override
     public GearmanFunction getFunction() {
-        return createFunctionInstance(theClass, project, node);
+        return createFunctionInstance(theClass, project, node, masterName);
     }
 
 
 
 
-    private static GearmanFunction createFunctionInstance(String className, AbstractProject<?,?> project, Node node) {
+    private static GearmanFunction createFunctionInstance(String className, AbstractProject<?,?> project, Node node, String masterName) {
 
         GearmanFunction f = null;
         try {
 
             Class<?> c = Class.forName(className);
-            Constructor<?> con = c.getConstructor(new Class[]{Project.class, Node.class});
-            Object o = con.newInstance(new Object[] {project, node});
+            Constructor<?> con = c.getConstructor(new Class[]{Project.class, Node.class, String.class});
+            Object o = con.newInstance(new Object[] {project, node, masterName});
 
             if (o instanceof GearmanFunction) {
                 f = (GearmanFunction) o;

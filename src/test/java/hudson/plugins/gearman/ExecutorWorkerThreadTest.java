@@ -65,7 +65,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         Project<?, ?> apple = createFreeStyleProject("apple");
         apple.setAssignedLabel(new LabelAtom("oneiric-10"));
 
-        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
+        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave, "master");
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -85,7 +85,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         Project<?, ?> lemon = createFreeStyleProject("lemon");
         lemon.setAssignedLabel(new LabelAtom("linux"));
 
-        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
+        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave, "master");
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -105,7 +105,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         Project<?, ?> lemon = createFreeStyleProject("lemon");
         lemon.setAssignedLabel(new LabelAtom("bogus"));
 
-        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
+        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave, "master");
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -122,7 +122,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
 
         Project<?, ?> lemon = createFreeStyleProject("lemon");
 
-        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
+        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave, "master");
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -142,7 +142,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         lemon.setAssignedLabel(new LabelAtom("linux"));
         lemon.disable();
 
-        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
+        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave, "master");
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -163,7 +163,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         Project<?, ?> lemon = createFreeStyleProject("lemon");
         lemon.setAssignedLabel(new LabelAtom("linux"));
 
-        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", offlineSlave);
+        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", offlineSlave, "master");
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -181,7 +181,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         MavenModuleSet lemon = createMavenProject("lemon");
         lemon.setAssignedLabel(new LabelAtom("linux"));
 
-        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
+        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave, "master");
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -202,7 +202,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         Project<?, ?> lemon = createFreeStyleProject("lemon");
         lemon.setAssignedLabel(new LabelAtom("!linux"));
 
-        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave);
+        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave, "master");
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 

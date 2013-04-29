@@ -56,13 +56,14 @@ public class GearmanProxyTest extends HudsonTestCase {
 
         assertEquals(0, gp.getNumExecutors());
 
-        gp.getGewtHandles().add(new ExecutorWorkerThread("localhost", 4730, "test-exec-0", slave));
-        gp.getGewtHandles().add(new ExecutorWorkerThread("localhost", 4730, "test-exec-1", slave));
-        gp.getGewtHandles().add(new ExecutorWorkerThread("localhost", 4730, "test-exec-2", slave));
+        gp.getGewtHandles().add(new ExecutorWorkerThread("localhost", 4730, "test_exec-0", slave, "master"));
+        gp.getGewtHandles().add(new ExecutorWorkerThread("localhost", 4730, "test_exec-1", slave, "master"));
+        gp.getGewtHandles().add(new ExecutorWorkerThread("localhost", 4730, "test_exec-2", slave, "master"));
 
         assertEquals(3, gp.getNumExecutors());
 
-        gp.getGewtHandles().add(new ManagementWorkerThread("localhost", 4730, "manage-exec-2"));
+        gp.getGewtHandles().add(new ManagementWorkerThread("localhost", 4730,
+                                                           "master_manage", "master"));
 
         assertEquals(4, gp.getNumExecutors());
     }

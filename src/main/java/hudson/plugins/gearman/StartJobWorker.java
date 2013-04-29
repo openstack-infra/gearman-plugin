@@ -73,10 +73,12 @@ public class StartJobWorker extends AbstractGearmanFunction {
 
     Node node;
     Project<?, ?> project;
+    String masterName;
 
-    public StartJobWorker(Project<?, ?> project, Node node) {
+    public StartJobWorker(Project<?, ?> project, Node node, String masterName) {
         this.project = project;
         this.node = node;
+        this.masterName = masterName;
     }
 
    private String buildStatusData(AbstractBuild<?, ?> build) {
@@ -89,6 +91,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
        data.put("number", build.getNumber());
        data.put("id", build.getId());
        data.put("url", build.getUrl());
+       data.put("master", masterName);
 
        String rootUrl = Hudson.getInstance().getRootUrl();
        if (rootUrl != null) {

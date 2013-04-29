@@ -46,6 +46,7 @@ public class GearmanProxy {
     // handles to gearman workers
     private final List<AbstractWorkerThread> gewtHandles;
     private final List<AbstractWorkerThread> gmwtHandles;
+    private final String masterName;
 
     // Singleton instance
     public static synchronized GearmanProxy getInstance() {
@@ -59,14 +60,23 @@ public class GearmanProxy {
     private GearmanProxy() {
         gewtHandles = Collections.synchronizedList(new ArrayList<AbstractWorkerThread>());
         gmwtHandles = Collections.synchronizedList(new ArrayList<AbstractWorkerThread>());
-    }
 
+        Computer master = null;
+        String hostname = null;
+        try {
+            master = Jenkins.getInstance().getComputer("");
+            hostname = master.getHostName();
+        } catch (Exception e) {
+            logger.info("---- Can't get Master");
+            e.printStackTrace();
+        }
+        masterName = hostname;
+    }
 
     /*
      * This method initializes the  gearman workers.
      */
     public void initWorkers() {
-
         /*
          * Purpose here is to create a 1:1 mapping of 'gearman worker':'jenkins
          * executor' then use the gearman worker to execute builds on that
@@ -130,7 +140,8 @@ public class GearmanProxy {
         AbstractWorkerThread gwt = new ManagementWorkerThread(
                 GearmanPluginConfig.get().getHost(),
                 GearmanPluginConfig.get().getPort(),
-                "master-manager");
+                masterName + "_manager",
+                masterName);
         //gwt.registerJobs();
         gwt.start();
         gmwtHandles.add(gwt);
@@ -146,11 +157,17 @@ public class GearmanProxy {
 
         int executors = computer.getExecutors().size();
         for (int i = 0; i < executors; i++) {
+            String nodeName = null;
+
+            nodeName = GearmanPluginUtil.getRealName(node);
+            if (nodeName == "master") {
+                nodeName = masterName;
+            }
 
             ExecutorWorkerThread ewt  = new ExecutorWorkerThread(GearmanPluginConfig.get().getHost(),
                     GearmanPluginConfig.get().getPort(),
-                    GearmanPluginUtil.getRealName(node)+"-exec-"+Integer.toString(i),
-                    node);
+                    nodeName+"_exec-"+Integer.toString(i),
+                    node, masterName);
 
             //ewt.registerJobs();
             ewt.start();

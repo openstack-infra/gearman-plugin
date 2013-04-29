@@ -56,16 +56,18 @@ public class ManagementWorkerThreadTest {
 
     @Test
     public void testRegisterJobs() {
-        AbstractWorkerThread manager = new ManagementWorkerThread("GearmanServer", 4730, "manager");
+        AbstractWorkerThread manager = new ManagementWorkerThread("GearmanServer", 4730,
+                                                                  "master_manager", "master");
         manager.registerJobs();
         Set<String> functions = manager.worker.getRegisteredFunctions();
-        assertEquals("stop:GearmanServer", functions.toArray()[0]);
+        assertEquals("stop:master", functions.toArray()[0]);
     }
 
     @Test
     public void testManagerId() {
-        AbstractWorkerThread manager = new ManagementWorkerThread("GearmanServer", 4730, "manager");
-        assertEquals("manager", manager.getName());
+        AbstractWorkerThread manager = new ManagementWorkerThread("GearmanServer", 4730,
+                                                                  "master_manager", "master");
+        assertEquals("master_manager", manager.getName());
     }
 
 }
