@@ -53,12 +53,11 @@ public class StopJobWorker extends AbstractGearmanFunction {
      */
     @Override
     public GearmanJobResult executeFunction() {
-
-        // decode the uniqueId from the client
-        String decodedUniqueId = null;
-        if (this.uniqueId != null) {
+        String cancelID = null;
+        if (this.data != null) {
+            // decode the data from the client
             try {
-                decodedUniqueId = new String(this.uniqueId, "UTF-8");
+                cancelID = new String((byte[]) this.data, "UTF-8");
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
             }
@@ -70,19 +69,19 @@ public class StopJobWorker extends AbstractGearmanFunction {
         String jobWarningMsg = "";
         String jobResultMsg = "";
 
-        if (decodedUniqueId.isEmpty() || decodedUniqueId == null){
+        if (cancelID == null || cancelID.isEmpty()) {
             logger.info("---- Client passed in an invalid UUID");
             jobFailureMsg = "I need the job Id please";
             jobResult = false;
         } else {
 
             // Abort running jenkins build that contain matching uuid
-            jobResult = abortBuild(decodedUniqueId);
+            jobResult = abortBuild(cancelID);
 
             if (jobResult){
-                jobResultMsg = "Canceled jenkins build " + decodedUniqueId;
+                jobResultMsg = "Canceled jenkins build " + cancelID;
             } else {
-                jobFailureMsg = "Could not cancel build " + decodedUniqueId;
+                jobFailureMsg = "Could not cancel build " + cancelID;
                 jobResult = false;
             }
         }
