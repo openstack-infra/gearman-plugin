@@ -9,9 +9,9 @@
     <f:validateButton
          title="${%Test Connection}" progress="${%Testing...}"
          method="testConnection" with="host,port"/>
-    <f:entry title="Launch Worker" field="launchWorker"
-      description="Select to run Gearman workers, Unselect to stop">
-      <f:checkbox checked="${descriptor.launchWorker()}"/>
+    <f:entry title="Enable Gearman" field="enablePlugin"
+      description="Select to enable Gearman plugin, Unselect to disable">
+      <f:checkbox checked="${descriptor.enablePlugin()}"/>
     </f:entry>
   </f:section>
 </j:jelly>

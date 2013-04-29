@@ -47,7 +47,7 @@ public class ComputerListenerImpl extends ComputerListener {
                 + " onConfigurationChange");
 
         // update functions only when gearman-plugin is enabled
-        if (!GearmanPluginConfig.get().launchWorker()) {
+        if (!GearmanPluginConfig.get().enablePlugin()) {
             return;
         }
 
@@ -63,7 +63,7 @@ public class ComputerListenerImpl extends ComputerListener {
                 + " onOffline");
 
         // update functions only when gearman-plugin is enabled
-        if (!GearmanPluginConfig.get().launchWorker()) {
+        if (!GearmanPluginConfig.get().enablePlugin()) {
             return;
         }
 
@@ -92,7 +92,7 @@ public class ComputerListenerImpl extends ComputerListener {
                 + " onOnline");
 
         // update functions only when gearman-plugin is enabled
-        if (!GearmanPluginConfig.get().launchWorker()) {
+        if (!GearmanPluginConfig.get().enablePlugin()) {
             return;
         }
 

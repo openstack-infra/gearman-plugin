@@ -54,7 +54,7 @@ public class SaveableListenerImpl extends SaveableListener {
                 + " onChange");
 
         // update functions only when gearman-plugin is enabled
-        if (!GearmanPluginConfig.get().launchWorker()) {
+        if (!GearmanPluginConfig.get().enablePlugin()) {
             return;
         }
 

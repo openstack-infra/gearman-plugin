@@ -82,48 +82,46 @@ public class GearmanProxy {
          * executor' then use the gearman worker to execute builds on that
          * jenkins nodes
          */
-        if (getNumExecutors() == 0) {
 
-            /*
-             * Spawn management executor worker. This worker does not need any
-             * executors. It only needs to work with gearman.
-             */
-            createManagementWorker();
+        /*
+         * Spawn management executor worker. This worker does not need any
+         * executors. It only needs to work with gearman.
+         */
+        createManagementWorker();
 
-            /*
-             * Spawn executors for the jenkins master Need to treat the master
-             * differently than slaves because the master is not the same as a
-             * slave
-             */
-            // first make sure master is enabled (or has executors)
-            Node masterNode = null;
-            try {
-                masterNode = Computer.currentComputer().getNode();
-            } catch (NullPointerException npe) {
-                logger.info("---- Master is offline");
-            } catch (Exception e) {
-                logger.info("---- Can't get Master");
-                e.printStackTrace();
+        /*
+         * Spawn executors for the jenkins master Need to treat the master
+         * differently than slaves because the master is not the same as a
+         * slave
+         */
+        // first make sure master is enabled (or has executors)
+        Node masterNode = null;
+        try {
+            masterNode = Computer.currentComputer().getNode();
+        } catch (NullPointerException npe) {
+            logger.info("---- Master is offline");
+        } catch (Exception e) {
+            logger.info("---- Can't get Master");
+            e.printStackTrace();
+        }
+
+        if (masterNode != null) {
+            Computer computer = masterNode.toComputer();
+            if (computer != null) {
+                createExecutorWorkersOnNode(computer);
             }
+        }
 
-            if (masterNode != null) {
-                Computer computer = masterNode.toComputer();
+        /*
+         * Spawn executors for the jenkins slaves
+         */
+        List<Node> nodes = Jenkins.getInstance().getNodes();
+        if (!nodes.isEmpty()) {
+            for (Node node : nodes) {
+                Computer computer = node.toComputer();
                 if (computer != null) {
+                    // create a gearman worker for every executor on the slave
                     createExecutorWorkersOnNode(computer);
-                }
-            }
-
-            /*
-             * Spawn executors for the jenkins slaves
-             */
-            List<Node> nodes = Jenkins.getInstance().getNodes();
-            if (!nodes.isEmpty()) {
-                for (Node node : nodes) {
-                    Computer computer = node.toComputer();
-                    if (computer != null) {
-                        // create a gearman worker for every executor on the slave
-                        createExecutorWorkersOnNode(computer);
-                    }
                 }
             }
         }

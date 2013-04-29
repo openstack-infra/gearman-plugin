@@ -48,7 +48,7 @@ public class GearmanPluginConfig extends GlobalConfiguration {
 
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
-    private boolean launchWorker; // enable/disable plugin
+    private boolean enablePlugin; // config to enable and disable plugin
     private String host; // gearman server host
     private int port; // gearman server port
 
@@ -56,14 +56,13 @@ public class GearmanPluginConfig extends GlobalConfiguration {
      * Constructor.
      */
     public GearmanPluginConfig() {
-        logger.info("---- GearmanPluginConfig Constructor ---");
-
         load();
     }
 
     public static GearmanPluginConfig get() {
         return GlobalConfiguration.all().get(GearmanPluginConfig.class);
     }
+
 
     /*
      * This method runs when user clicks Test Connection button.
@@ -89,28 +88,50 @@ public class GearmanPluginConfig extends GlobalConfiguration {
     public boolean configure(StaplerRequest req, JSONObject json)
             throws Descriptor.FormException {
 
-        // set the gearman config from user entered values in jenkins config
-        // page
-        launchWorker = json.getBoolean("launchWorker");
+        // save current plugin config so we can compare to new user settings
+        String prevHost = this.host;
+        int prevPort = this.port;
+        boolean prevEnablePlugin = this.enablePlugin;
+
+        // get the new gearman plugin configs from jenkins config page settings
+        enablePlugin = json.getBoolean("enablePlugin");
         host = json.getString("host");
         port = json.getInt("port");
 
-        if (launchWorker) {
+        if (!enablePlugin && prevEnablePlugin) {  // gearman-plugin goes from ON to OFF state
+            GearmanProxy.getInstance().stopAll();
 
-            // check for a valid connection to gearman server
-            logger.info("---- Check connection to Gearman Server " + host + ":"
-                    + port);
+        } else if (enablePlugin && !prevEnablePlugin) { // gearman-plugin goes from OFF to ON state
+            // check for a valid connection to server
             if (!connectionIsAvailable(host, port, 5000)) {
-                launchWorker = false;
+                enablePlugin = false;
                 throw new FormException("Unable to connect to Gearman server. "
-                        + "Please check the server connection settings and retry.",
-                        "host");
+                            + "Please check the server connection settings and retry.",
+                            "host");
             }
 
+            // run workers
             GearmanProxy.getInstance().initWorkers();
 
-        } else {
-            GearmanProxy.getInstance().stopAll();
+        } else if (enablePlugin && prevEnablePlugin) { // gearman-plugin stays in the ON state
+            // update connection for a plugin config change
+            if (!host.equals(prevHost) || port != prevPort) {
+
+                // stop the workers on the current connected
+                GearmanProxy.getInstance().stopAll();
+
+                // check for a valid connection to server
+                if (!connectionIsAvailable(host, port, 5000)) {
+                    enablePlugin = false;
+                    throw new FormException("Unable to connect to Gearman server. "
+                                + "Please check the server connection settings and retry.",
+                                "host");
+                }
+
+                // run workers with new connection
+                GearmanProxy.getInstance().initWorkers();
+            }
+
         }
 
         req.bindJSON(this, json);
@@ -118,12 +139,13 @@ public class GearmanPluginConfig extends GlobalConfiguration {
         return true;
     }
 
+
     /**
      * This method returns true if the global configuration says we should
-     * launch worker.
+     * enable the plugin.
      */
-    public boolean launchWorker() {
-        return Objects.firstNonNull(launchWorker, Constants.GEARMAN_DEFAULT_LAUNCH_WORKER);
+    public boolean enablePlugin() {
+        return Objects.firstNonNull(enablePlugin, Constants.GEARMAN_DEFAULT_ENABLE_PLUGIN);
     }
 
     /**
@@ -146,7 +168,7 @@ public class GearmanPluginConfig extends GlobalConfiguration {
     }
 
     /*
-     * This method checks whether a connection open and available
+     * This method checks whether a connection is open and available
      * on $host:$port
      *
      * @param host
