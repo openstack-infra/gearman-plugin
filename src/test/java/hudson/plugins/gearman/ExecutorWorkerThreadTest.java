@@ -44,6 +44,19 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
     public void setUp() throws Exception {
         super.setUp();
         slave = createOnlineSlave(new LabelAtom("oneiric-10"));
+
+        // poll to make sure test slave is online before continuing
+        long timeoutExpiredMs = System.currentTimeMillis() + 3000;
+        while (true) {
+            if (slave.getChannel() != null) {
+                break;
+            }
+            this.wait(timeoutExpiredMs - System.currentTimeMillis());
+            if (System.currentTimeMillis() >= timeoutExpiredMs) {
+                fail("Could not start test slave");
+            }
+        }
+
         slave.setLabelString("ubuntu gcc python-2.4 linux");
     }
 
