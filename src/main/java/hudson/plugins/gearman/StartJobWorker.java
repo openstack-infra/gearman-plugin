@@ -19,36 +19,34 @@
 
 package hudson.plugins.gearman;
 
-import hudson.model.Hudson;
 import hudson.model.Action;
 import hudson.model.ParameterValue;
 import hudson.model.Result;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Cause;
+import hudson.model.Hudson;
 import hudson.model.Node;
 import hudson.model.Project;
 import hudson.model.Queue;
-import hudson.model.Queue.Executable;
-import hudson.model.queue.QueueTaskFuture;
 import hudson.model.StringParameterValue;
+import hudson.model.queue.QueueTaskFuture;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
-import org.gearman.common.GearmanJobServerSession;
 import org.gearman.client.GearmanIOEventListener;
 import org.gearman.client.GearmanJobResult;
 import org.gearman.client.GearmanJobResultImpl;
+import org.gearman.common.GearmanJobServerSession;
 import org.gearman.worker.AbstractGearmanFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,6 +88,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
        data.put("name", project.getName());
        data.put("number", build.getNumber());
        data.put("id", build.getId());
+       data.put("build_id", project.getName()+":"+build.getId());
        data.put("url", build.getUrl());
        data.put("master", masterName);
 
@@ -182,7 +181,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
 
         try {
             // wait for start of build
-            Queue.Executable exec = (Executable) future.getStartCondition().get();
+            Queue.Executable exec = future.getStartCondition().get();
             AbstractBuild<?, ?> currBuild = (AbstractBuild<?, ?>) exec;
 
             long now = new Date().getTime();
@@ -227,7 +226,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
                 }
             }
 
-            exec = (Executable) future.get();
+            exec = future.get();
 
             jobData = buildStatusData(currBuild);
             if (sess != null) {

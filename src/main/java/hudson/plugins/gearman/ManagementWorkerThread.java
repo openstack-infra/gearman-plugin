@@ -21,8 +21,8 @@ package hudson.plugins.gearman;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.gearman.worker.GearmanFunctionFactory;
 import org.gearman.worker.DefaultGearmanFunctionFactory;
+import org.gearman.worker.GearmanFunctionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,12 +56,12 @@ public class ManagementWorkerThread extends AbstractWorkerThread{
     @Override
     public void registerJobs(){
         if (!registered) {
-            String jobFunctionName = "stop:"+masterName;
-            logger.info("---- Registering job "+jobFunctionName+" on "+host);
             Set<GearmanFunctionFactory> functionSet = new HashSet<GearmanFunctionFactory>();
 
-            functionSet.add(new DefaultGearmanFunctionFactory(jobFunctionName,
+            functionSet.add(new DefaultGearmanFunctionFactory("stop:"+masterName,
                             StopJobWorker.class.getName()));
+            functionSet.add(new DefaultGearmanFunctionFactory("set_description:"+masterName,
+                    SetDescriptionWorker.class.getName()));
 
             updateJobs(functionSet);
             registered = true;

@@ -130,8 +130,8 @@ public class GearmanProxy {
     }
 
     /*
-     * Spawn management executor worker. This worker does not need any
-     * executors. It only needs to work with gearman.
+     * Spawn management executor workers. This worker does not need any
+     * executors. It only needs to connect to gearman.
      */
     public void createManagementWorker() {
 
@@ -140,10 +140,8 @@ public class GearmanProxy {
                 GearmanPluginConfig.get().getPort(),
                 masterName + "_manager",
                 masterName);
-        //gwt.registerJobs();
         gwt.start();
         gmwtHandles.add(gwt);
-
     }
 
     /*

@@ -60,7 +60,8 @@ public class ManagementWorkerThreadTest {
                                                                   "master_manager", "master");
         manager.registerJobs();
         Set<String> functions = manager.worker.getRegisteredFunctions();
-        assertEquals("stop:master", functions.toArray()[0]);
+        assertEquals("set_description:master", functions.toArray()[0]);
+        assertEquals("stop:master", functions.toArray()[1]);
     }
 
     @Test
