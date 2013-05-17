@@ -160,7 +160,7 @@ public class GearmanProxy {
                 nodeName = masterName;
             }
 
-            ExecutorWorkerThread ewt  = new ExecutorWorkerThread(GearmanPluginConfig.get().getHost(),
+            AbstractWorkerThread ewt  = new ExecutorWorkerThread(GearmanPluginConfig.get().getHost(),
                     GearmanPluginConfig.get().getPort(),
                     nodeName+"_exec-"+Integer.toString(i),
                     node, masterName);
