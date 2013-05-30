@@ -23,7 +23,6 @@ import hudson.model.Computer;
 import hudson.slaves.ComputerListener;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,19 +66,8 @@ public class ComputerListenerImpl extends ComputerListener {
             return;
         }
 
-        // remove worker when jenkins slave is deleted or disconnected
-        GearmanProxy gp = GearmanProxy.getInstance();
-        List<AbstractWorkerThread> workers = gp.getGewtHandles();
-        synchronized(workers) {
-            for (AbstractWorkerThread worker : workers) {
-                if (worker.name.contains(c.getName())) {
-                    logger.info("---- stopping executor worker = "
-                              + worker.getName());
-                    gp.getGewtHandles().remove(worker);
-                    worker.stop();
-                }
-            }
-        }
+        // stop worker when jenkins slave is deleted or disconnected
+        GearmanProxy.getInstance().stop(c);
     }
 
     @Override

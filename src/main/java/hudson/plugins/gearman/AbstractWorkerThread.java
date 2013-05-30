@@ -20,12 +20,9 @@ package hudson.plugins.gearman;
 
 import java.util.Date;
 import java.util.Set;
-import java.util.HashSet;
 
-import org.gearman.worker.GearmanFunctionFactory;
 import org.gearman.common.GearmanNIOJobServerConnection;
-import org.gearman.worker.GearmanWorker;
-//import org.gearman.worker.GearmanWorkerImpl;
+import org.gearman.worker.GearmanFunctionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,8 +115,7 @@ public abstract class AbstractWorkerThread implements Runnable {
 
         if (worker.isRunning()) {
             try {
-                logger.info("---- Stopping " + getName() +" (" + new Date().toString() + ")");
-                worker.shutdown();
+                worker.stop();
             } catch (Exception e) {
                 e.printStackTrace();
             }

@@ -23,6 +23,7 @@ import hudson.model.Node;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 import jenkins.model.Jenkins;
@@ -142,6 +143,9 @@ public class GearmanProxy {
                 masterName);
         gwt.start();
         gmwtHandles.add(gwt);
+
+        logger.info("---- Num of executors running = " + getNumExecutors());
+
     }
 
     /*
@@ -168,8 +172,10 @@ public class GearmanProxy {
             //ewt.registerJobs();
             ewt.start();
             gewtHandles.add(ewt);
-
         }
+
+        logger.info("---- Num of executors running = " + getNumExecutors());
+
     }
 
     /*
@@ -189,6 +195,31 @@ public class GearmanProxy {
                 gmwtHandle.stop();
             }
             gmwtHandles.clear();
+        }
+
+        logger.info("---- Num of executors running = " + getNumExecutors());
+    }
+
+    /*
+     * This method stops all threads on the gewtHandles list that
+     * is used to  service the jenkins slave/computer
+     *
+     *
+     * @param Node
+     *      The Computer to stop
+     *
+     */
+    public void stop(Computer computer) {
+
+        // find the computer in the executor workers list and stop it
+        synchronized(gewtHandles) {
+            for (Iterator<AbstractWorkerThread> it = gewtHandles.iterator(); it.hasNext(); ) {
+                AbstractWorkerThread t = it.next();
+                if (t.name.contains(computer.getName())) {
+                    t.stop();
+                    it.remove();
+                }
+             }
         }
 
         logger.info("---- Num of executors running = " + getNumExecutors());
