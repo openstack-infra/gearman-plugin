@@ -18,8 +18,12 @@
 
 package hudson.plugins.gearman;
 
+import hudson.model.AbstractProject;
 import hudson.model.Computer;
 import hudson.model.Node;
+import hudson.model.Run;
+
+import jenkins.model.Jenkins;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,4 +59,25 @@ public class GearmanPluginUtil {
         }
     }
 
+    /**
+     * Function to finds the build with the unique build id.
+     *
+     * @param jobName
+     *      The jenkins job or project name
+     * @param buildNumber
+     *      The jenkins build number
+     * @return
+     *      the build Run if found, otherwise return null
+     */
+    public static Run<?,?> findBuild(String jobName, int buildNumber) {
+
+        AbstractProject<?,?> project = Jenkins.getInstance().getItemByFullName(jobName, AbstractProject.class);
+        if (project != null){
+            Run<?,?> run = project.getBuildByNumber(buildNumber);
+            if (run != null) {
+                return run;
+            }
+        }
+        return null;
+    }
 }

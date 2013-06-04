@@ -87,14 +87,11 @@ public class StartJobWorker extends AbstractGearmanFunction {
 
        data.put("name", project.getName());
        data.put("number", build.getNumber());
-       data.put("id", build.getId());
-       data.put("build_id", project.getName()+":"+build.getId());
-       data.put("url", build.getUrl());
-       data.put("master", masterName);
+       data.put("manager", masterName);
 
        String rootUrl = Hudson.getInstance().getRootUrl();
        if (rootUrl != null) {
-           data.put("full_url", rootUrl + build.getUrl());
+           data.put("url", rootUrl + build.getUrl());
        }
 
        Result result = build.getResult();

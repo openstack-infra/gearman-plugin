@@ -19,14 +19,11 @@
 
 package hudson.plugins.gearman;
 
-import hudson.model.AbstractProject;
 import hudson.model.Run;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
-
-import jenkins.model.Jenkins;
 
 import org.gearman.client.GearmanJobResult;
 import org.gearman.client.GearmanJobResultImpl;
@@ -59,82 +56,49 @@ public class SetDescriptionWorker extends AbstractGearmanFunction {
 
         // check job results
         boolean jobResult = false;
-        String jobExceptionMsg = "";
-        String jobWarningMsg = "";
         String jobResultMsg = "";
 
+        String decodedData;
+        // decode json
         try {
-            // decode json
-            String decodedData = new String((byte[]) this.data, "UTF-8");
-            // convert parameters passed in from client to hash map
-            Gson gson = new Gson();
-            Map<String, String> data = gson.fromJson(decodedData,
-                    new TypeToken<Map<String, String>>() {
-                    }.getType());
-
-            // get build description
-            String buildDescription = data.get("description");
-            // get build id
-            String buildId = data.get("build_id");
-            String[] idToken = buildId.split(":");
-            if (idToken.length != 2 || buildDescription == null || buildId == null) {
-                jobExceptionMsg = "Invalid Unique Id";
-                throw new IllegalArgumentException(jobExceptionMsg);
-            } else {
-                String jobName = idToken[0];
-                String jobId = idToken[1];
-                if (!jobName.isEmpty() && !jobId.isEmpty()) {
-                    // find build then update its description
-                    Run<?,?> build = findBuild(jobName, jobId);
-                    if (build != null) {
-                        build.setDescription(buildDescription);
-                        jobResultMsg = "Description for Jenkins build " +buildId+" was pdated to " + buildDescription;
-                        jobResult = true;
-                    } else {
-                        jobExceptionMsg = "Cannot find build with id " + buildId;
-                        throw new IllegalArgumentException(jobExceptionMsg);
-                    }
-                } else {
-                    jobExceptionMsg = "Build id is invalid or not specified";
-                    throw new IllegalArgumentException(jobExceptionMsg);
-                }
-            }
+            decodedData = new String((byte[]) this.data, "UTF-8");
         } catch (UnsupportedEncodingException e) {
-            jobExceptionMsg = "Error decoding parameters";
-        } catch (NullPointerException e) {
-            jobExceptionMsg = "Error decoding parameters";
-        } catch (IOException e) {
-            jobExceptionMsg = "Error setting build description";
-        } catch (IllegalArgumentException e) {
-            jobExceptionMsg = e.getMessage();
+            throw new IllegalArgumentException("Unsupported encoding exception in argument");
+        }
+
+        // convert parameters passed in from client to hash map
+        Gson gson = new Gson();
+        Map<String, String> data = gson.fromJson(decodedData,
+                new TypeToken<Map<String, String>>() {
+                }.getType());
+
+        // get build description
+        String buildDescription = data.get("html_description");
+        // get build id
+        String jobName = data.get("name");
+        String buildNumber = data.get("number");
+        if (!jobName.isEmpty() && !buildNumber.isEmpty()) {
+            // find build then update its description
+            Run<?,?> build = GearmanPluginUtil.findBuild(jobName, Integer.parseInt(buildNumber));
+            if (build != null) {
+                try {
+                    build.setDescription(buildDescription);
+                } catch (IOException e) {
+                    throw new IllegalArgumentException("Unable to set description for " +
+                                                       jobName + ": " + buildNumber);
+                }
+                jobResultMsg = "Description for Jenkins build " +buildNumber+" was updated to " + buildDescription;
+                jobResult = true;
+            } else {
+                throw new IllegalArgumentException("Cannot find build number " +
+                                                   buildNumber);
+            }
+        } else {
+            throw new IllegalArgumentException("Build id is invalid or not specified");
         }
 
         GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, jobResult,
-                jobResultMsg.getBytes(), jobWarningMsg.getBytes(),
-                jobExceptionMsg.getBytes(), 0, 0);
+                jobResultMsg.getBytes(), null, null, 0, 0);
         return gjr;
-    }
-
-
-    /**
-     * Function to finds the build with the unique build id.
-     *
-     * @param jobName
-     *      The jenkins job or project name
-     * @param uuid
-     *      The jenkins job id
-     * @return
-     *      the build Run if found, otherwise return null
-     */
-    private Run<?,?> findBuild(String jobName, String jobId) {
-
-        AbstractProject<?,?> project = Jenkins.getInstance().getItemByFullName(jobName, AbstractProject.class);
-        if (project != null){
-            Run<?,?> run = project.getBuild(jobId);
-            if (run != null) {
-                return run;
-            }
-        }
-        return null;
     }
 }
