@@ -155,11 +155,16 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
         LOG.info("Starting reconnect for " + session.toString());
         try {
             session.initSession(ioAvailable, this);
+            if (id != null) {
+                sendToAll(new GearmanPacketImpl(GearmanPacketMagic.REQ,
+                                                GearmanPacketType.SET_CLIENT_ID,
+                                                ByteUtils.toUTF8Bytes(id)));
+            }
             // this will cause a grab-job event
             functionRegistry.setUpdated(true);
         } catch (IOException e) {
             try {
-                Thread.sleep(3000);
+                Thread.sleep(2000);
             } catch (InterruptedException e1) {
             }
         }
@@ -425,8 +430,11 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
             throw new IllegalArgumentException("Worker ID may not be null");
         }
         this.id = id;
-        sendToAll(new GearmanPacketImpl(GearmanPacketMagic.REQ,
-                GearmanPacketType.SET_CLIENT_ID, ByteUtils.toUTF8Bytes(id)));
+        if (session.isInitialized()) {
+            sendToAll(new GearmanPacketImpl(GearmanPacketMagic.REQ,
+                                            GearmanPacketType.SET_CLIENT_ID,
+                                            ByteUtils.toUTF8Bytes(id)));
+        }
     }
 
     public String getWorkerID() {
