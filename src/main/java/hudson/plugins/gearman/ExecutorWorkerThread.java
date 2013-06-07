@@ -59,6 +59,10 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
         super(host, port, name);
         this.node = node;
         this.masterName = masterName;
+    }
+
+    protected void initWorker() {
+        super.initWorker();
         this.functionMap = new HashMap<String,GearmanFunctionFactory>();
     }
 

@@ -44,8 +44,9 @@ public abstract class AbstractWorkerThread implements Runnable {
     protected int port;
     protected String name;
     protected MyGearmanWorkerImpl worker;
-    private final GearmanNIOJobServerConnection conn;
+    protected GearmanNIOJobServerConnection conn;
     private Thread thread;
+    private boolean running = false;
 
     public AbstractWorkerThread(String host, int port) {
         this(host, port, DEFAULT_EXECUTOR_NAME);
@@ -55,6 +56,10 @@ public abstract class AbstractWorkerThread implements Runnable {
         setHost(host);
         setPort(port);
         setName(name);
+        initWorker();
+    }
+
+    protected void initWorker() {
         worker = new MyGearmanWorkerImpl();
         conn = new GearmanNIOJobServerConnection(host, port);
     }
@@ -102,7 +107,8 @@ public abstract class AbstractWorkerThread implements Runnable {
      * Start the thread
      */
     public void start() {
-        thread = new Thread(this);
+        running = true;
+        thread = new Thread(this, "Gearman worker " + name);
         thread.start();
     }
 
@@ -110,8 +116,8 @@ public abstract class AbstractWorkerThread implements Runnable {
      * Stop the thread
      */
     public void stop() {
+        running = false;
         // Interrupt the thread so it unblocks any blocking call
-
 
         if (worker.isRunning()) {
             try {
@@ -119,21 +125,17 @@ public abstract class AbstractWorkerThread implements Runnable {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-
         }
 
         thread.interrupt();
 
         // Wait until the thread exits
         try {
-
             thread.join();
         } catch (InterruptedException ex) {
             // Unexpected interruption
             ex.printStackTrace();
         }
-
-
     }
 
     /*
@@ -143,13 +145,23 @@ public abstract class AbstractWorkerThread implements Runnable {
     @Override
     public void run() {
 
-        if (!worker.isRunning()) {
-            logger.info("---- Starting Worker "+ getName() +" ("+new Date().toString()+")");
-            worker.addServer(conn);
-            worker.setWorkerID(name);
-            worker.setJobUniqueIdRequired(true);
-            registerJobs();
-            worker.work();
+        while (running) {
+            try {
+                logger.info("---- Starting Worker "+ getName() +" ("+new Date().toString()+")");
+                worker.addServer(conn);
+                worker.setWorkerID(name);
+                worker.setJobUniqueIdRequired(true);
+                registerJobs();
+                worker.work();
+            } catch (Exception ex) {
+                logger.error("Exception while running worker", ex);
+                worker.shutdown();
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e2) {
+                }
+                initWorker();
+            }
         }
 
         // Thread exits
