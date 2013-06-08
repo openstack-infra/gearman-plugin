@@ -84,23 +84,23 @@ public class ComputerListenerImpl extends ComputerListener {
             return;
         }
 
-        // on creation of master
+        /*
+         * Need to treat the master differently than slaves because
+         * the master is not the same as a slave
+         */
         GearmanProxy gp = GearmanProxy.getInstance();
-        if (Computer.currentComputer() == c) { //check to see if this is master
-            logger.info("---- This is master node, name is = "+c.getName());
-
+        if (gp.getGmwtHandles().isEmpty()) {
             /*
-             * Spawn management executor worker. This worker does not need any
-             * executors. It only needs to work with gearman.
+             * Spawn management executor worker if one doesn't exist yet.
+             * This worker does not need any executors. It only needs
+             * to work with gearman.
              */
             gp.createManagementWorker();
 
-            /*
-             * Spawn executors for the jenkins master Need to treat the master
-             * differently than slaves because the master is not the same as a
-             * slave
-             */
-            gp.createExecutorWorkersOnNode(c);
+            // Spawn executors for the jenkins master
+            if (Computer.currentComputer() == c) { //check to see if this is master
+                gp.createExecutorWorkersOnNode(c);
+            }
         }
 
         // on creation of new slave

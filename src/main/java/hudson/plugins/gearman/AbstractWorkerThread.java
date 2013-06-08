@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 public abstract class AbstractWorkerThread implements Runnable {
 
-    public static final String DEFAULT_EXECUTOR_NAME = "anonymous";
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
@@ -49,7 +48,7 @@ public abstract class AbstractWorkerThread implements Runnable {
     private boolean running = false;
 
     public AbstractWorkerThread(String host, int port) {
-        this(host, port, DEFAULT_EXECUTOR_NAME);
+        this(host, port, Constants.GEARMAN_DEFAULT_EXECUTOR_NAME);
     }
 
     public AbstractWorkerThread(String host, int port, String name) {

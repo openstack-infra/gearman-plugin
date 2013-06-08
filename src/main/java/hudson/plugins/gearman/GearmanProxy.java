@@ -21,6 +21,7 @@ package hudson.plugins.gearman;
 import hudson.model.Computer;
 import hudson.model.Node;
 
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -63,14 +64,23 @@ public class GearmanProxy {
         gmwtHandles = Collections.synchronizedList(new ArrayList<AbstractWorkerThread>());
 
         Computer master = null;
-        String hostname = null;
+        String hostname = Constants.GEARMAN_DEFAULT_EXECUTOR_NAME;
+        // query Jenkins for master's name
         try {
             master = Jenkins.getInstance().getComputer("");
             hostname = master.getHostName();
         } catch (Exception e) {
-            logger.info("---- Can't get Master");
             e.printStackTrace();
         }
+        // master node may not be enabled so get masterName from system
+        if (master == null) {
+            try {
+                hostname = java.net.InetAddress.getLocalHost().getHostName();
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            }
+        }
+
         masterName = hostname;
     }
 
