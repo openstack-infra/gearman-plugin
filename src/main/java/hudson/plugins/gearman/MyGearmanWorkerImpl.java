@@ -83,31 +83,7 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
     private final GearmanJobServerIpConnectionFactory connFactory = new GearmanNIOJobServerConnectionFactory();
     private volatile boolean jobUniqueIdRequired = false;
     private FunctionRegistry functionRegistry;
-    private WaitBool okayToGrabJob = new WaitBool(true);
-
-    class WaitBool {
-        private boolean value;
-
-        WaitBool(boolean value) {
-            this.value = value;
-        }
-
-        public synchronized void set(boolean value) {
-            this.value = value;
-            this.notifyAll();
-        }
-
-        public synchronized void waitUntil(boolean value)
-            throws InterruptedException
-        {
-            if (this.value == value)
-                return;
-
-            while (this.value != value) {
-                this.wait();
-            }
-        }
-    }
+    private AvailabilityChecker availability;
 
     class GrabJobEventHandler implements GearmanServerResponseHandler {
 
@@ -196,11 +172,13 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
         LOG.info("Ending reconnect for " + session.toString());
     }
 
-    public MyGearmanWorkerImpl() {
-        this (null);
+    public MyGearmanWorkerImpl(AvailabilityChecker availability) {
+        this (null, availability);
     }
 
-    public MyGearmanWorkerImpl(ExecutorService executorService) {
+    public MyGearmanWorkerImpl(ExecutorService executorService,
+                               AvailabilityChecker availability) {
+        this.availability = availability;
         functionList = new LinkedList<GearmanFunction>();
         id = DESCRIPION_PREFIX + ":" + Thread.currentThread().getId();
         functionMap = new HashMap<String, FunctionDefinition>();
@@ -375,12 +353,8 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
         shutDownWorker(true);
     }
 
-    public void setOkayToGrabJob(boolean value) {
-        okayToGrabJob.set(value);
-    }
-
     private void sendGrabJob(GearmanJobServerSession s) throws InterruptedException {
-        okayToGrabJob.waitUntil(true);
+        availability.waitUntilOkayToGrabJob();
 
         GearmanTask grabJobTask = new GearmanTask(
             new GrabJobEventHandler(s),

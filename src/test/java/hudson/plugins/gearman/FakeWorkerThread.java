@@ -33,13 +33,9 @@ public class FakeWorkerThread extends AbstractWorkerThread{
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
-    // constructor
-    public FakeWorkerThread(String host, int port) {
-        super(host, port);
-    }
-
-    public FakeWorkerThread(String host, int port, String name) {
-        super(host, port, name);
+    public FakeWorkerThread(String host, int port, String name,
+                            AvailabilityChecker availability) {
+        super(host, port, name, availability);
     }
 
     /**

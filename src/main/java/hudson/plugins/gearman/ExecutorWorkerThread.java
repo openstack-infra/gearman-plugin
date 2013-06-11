@@ -55,9 +55,9 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
     private HashMap<String,GearmanFunctionFactory> functionMap;
 
     // constructor
-    public ExecutorWorkerThread(String host, int port, String name, Node node,
-                                String masterName) {
-        super(host, port, name);
+    public ExecutorWorkerThread(String host, int port, String name,
+                                Node node, String masterName) {
+        super(host, port, name, new AvailabilityChecker(true));
         this.node = node;
         this.masterName = masterName;
     }
@@ -204,7 +204,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
         // a build has started on this computer
         Computer computer = node.toComputer();
         if (computer.countIdle() == 0) {
-            worker.setOkayToGrabJob(false);
+            getAvailability().setOkayToGrabJob(false);
         }
 
         // TODO: There is a race condition here -- a worker may have
@@ -218,7 +218,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
         // a build has completed on this executor
         Computer computer = node.toComputer();
 
-        worker.setOkayToGrabJob(true);
+        getAvailability().setOkayToGrabJob(true);
 
         // TODO: There could still be jobs in the queue that may or
         // may not be assigned to this computer.  If there are, we

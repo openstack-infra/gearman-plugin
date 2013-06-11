@@ -42,7 +42,7 @@ public class ManagementWorkerThread extends AbstractWorkerThread{
     private final String masterName;
 
     public ManagementWorkerThread(String host, int port, String name, String masterName){
-        super(host, port, name);
+        super(host, port, name, new AvailabilityChecker(false));
         this.masterName = masterName;
     }
 

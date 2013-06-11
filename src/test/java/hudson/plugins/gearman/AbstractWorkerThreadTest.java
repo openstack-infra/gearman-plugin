@@ -55,20 +55,14 @@ public class AbstractWorkerThreadTest {
     }
 
     @Test
-    public void testAnonymousThread() {
-        AbstractWorkerThread fakeWorker = new FakeWorkerThread("GearmanServer", 4730);
-        assertEquals("anonymous", fakeWorker.getName());
-    }
-
-    @Test
     public void testNamedThread() {
-        AbstractWorkerThread fakeWorker = new FakeWorkerThread("GearmanServer", 4730, "faker");
+        AbstractWorkerThread fakeWorker = new FakeWorkerThread("GearmanServer", 4730, "faker", null);
         assertEquals("faker", fakeWorker.getName());
     }
 
     @Test
     public void testStartStopThread() {
-        AbstractWorkerThread fakeWorker = new FakeWorkerThread("GearmanServer", 4730);
+        AbstractWorkerThread fakeWorker = new FakeWorkerThread("GearmanServer", 4730, "faker", null);
         fakeWorker.start();
         assertTrue(fakeWorker.isAlive());
         fakeWorker.stop();
