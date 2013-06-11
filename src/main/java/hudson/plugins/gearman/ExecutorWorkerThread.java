@@ -21,6 +21,7 @@ package hudson.plugins.gearman;
 import hudson.model.AbstractProject;
 import hudson.model.Label;
 import hudson.model.Node;
+import hudson.model.Computer;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -197,5 +198,30 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
 
     public synchronized Node getNode() {
         return node;
+    }
+
+    public void onBuildStarted() {
+        // a build has started on this computer
+        Computer computer = node.toComputer();
+        if (computer.countIdle() == 0) {
+            worker.setOkayToGrabJob(false);
+        }
+
+        // TODO: There is a race condition here -- a worker may have
+        // just scheduled a build right as Jenkins started one from a
+        // non-gearman trigger.  In that case, we should dequeue that
+        // build and disconnect the worker (which will cause Gearman
+        // to re-queue the job).
+    }
+
+    public void onBuildFinalized() {
+        // a build has completed on this executor
+        Computer computer = node.toComputer();
+
+        worker.setOkayToGrabJob(true);
+
+        // TODO: There could still be jobs in the queue that may or
+        // may not be assigned to this computer.  If there are, we
+        // should avoid grabbing jobs until that condition has passed.
     }
 }

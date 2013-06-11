@@ -20,6 +20,7 @@ package hudson.plugins.gearman;
 
 import hudson.model.Computer;
 import hudson.model.Node;
+import hudson.model.Run;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -256,4 +257,31 @@ public class GearmanProxy {
         return gmwtHandles;
     }
 
+    public void onBuildStarted(Run r) {
+        Computer computer = r.getExecutor().getOwner();
+        // find the computer in the executor workers list and stop it
+
+        synchronized(gewtHandles) {
+            for (Iterator<AbstractWorkerThread> it = gewtHandles.iterator(); it.hasNext(); ) {
+                AbstractWorkerThread t = it.next();
+                if (t.name.contains(computer.getName())) {
+                    ((ExecutorWorkerThread)t).onBuildStarted();
+                }
+             }
+        }
+    }
+
+    public void onBuildFinalized(Run r) {
+        Computer computer = r.getExecutor().getOwner();
+        // find the computer in the executor workers list and stop it
+
+        synchronized(gewtHandles) {
+            for (Iterator<AbstractWorkerThread> it = gewtHandles.iterator(); it.hasNext(); ) {
+                AbstractWorkerThread t = it.next();
+                if (t.name.contains(computer.getName())) {
+                    ((ExecutorWorkerThread)t).onBuildFinalized();
+                }
+             }
+        }
+    }
 }

@@ -83,6 +83,31 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
     private final GearmanJobServerIpConnectionFactory connFactory = new GearmanNIOJobServerConnectionFactory();
     private volatile boolean jobUniqueIdRequired = false;
     private FunctionRegistry functionRegistry;
+    private WaitBool okayToGrabJob = new WaitBool(true);
+
+    class WaitBool {
+        private boolean value;
+
+        WaitBool(boolean value) {
+            this.value = value;
+        }
+
+        public synchronized void set(boolean value) {
+            this.value = value;
+            this.notifyAll();
+        }
+
+        public synchronized void waitUntil(boolean value)
+            throws InterruptedException
+        {
+            if (this.value == value)
+                return;
+
+            while (this.value != value) {
+                this.wait();
+            }
+        }
+    }
 
     class GrabJobEventHandler implements GearmanServerResponseHandler {
 
@@ -288,14 +313,15 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
                     // send the initial GRAB_JOB on reconnection.
                     LOG.info("Worker " + this + " sending initial grab job");
                     try {
-                        GearmanTask sessTask = new GearmanTask(
-                            new GrabJobEventHandler(session),
-                            new GearmanPacketImpl(GearmanPacketMagic.REQ,
-                                                  getGrabJobPacketType(), new byte[0]));
-                        taskMap.put(session, sessTask);
-                        session.submitTask(sessTask);
+                        sendGrabJob(session);
+                    } catch (InterruptedException e) {
+                        LOG.warn("Interrupted while waiting for okay to send " +
+                                 "grab job", e);
+                        continue;
+                    }
+                    grabJobSent = true;
+                    try {
                         session.driveSessionIO();
-                        grabJobSent = true;
                     } catch (IOException io) {
                         LOG.warn("Receieved IOException while" +
                                  " sending initial grab job",io);
@@ -349,6 +375,21 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
         shutDownWorker(true);
     }
 
+    public void setOkayToGrabJob(boolean value) {
+        okayToGrabJob.set(value);
+    }
+
+    private void sendGrabJob(GearmanJobServerSession s) throws InterruptedException {
+        okayToGrabJob.waitUntil(true);
+
+        GearmanTask grabJobTask = new GearmanTask(
+            new GrabJobEventHandler(s),
+            new GearmanPacketImpl(GearmanPacketMagic.REQ,
+                getGrabJobPacketType(), new byte[0]));
+        taskMap.put(s, grabJobTask);
+        s.submitTask(grabJobTask);
+    }
+
     public void handleSessionEvent(GearmanSessionEvent event)
             throws IllegalArgumentException, IllegalStateException {
         GearmanPacket p = event.getPacket();
@@ -370,15 +411,12 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
             case NOOP:
                 taskMap.remove(s);
                 LOG.debug("Worker " + this + " sending grab job after wakeup");
-                GearmanTask grabJobTask = new GearmanTask(
-                        new GrabJobEventHandler(s),
-                        new GearmanPacketImpl(GearmanPacketMagic.REQ,
-                        getGrabJobPacketType(), new byte[0]));
-                taskMap.put(s, grabJobTask);
-                s.submitTask(grabJobTask);
-                LOG.debug("Worker: " + this + " submitted a " +
-                          grabJobTask.getRequestPacket().getPacketType() +
-                          " to session: " + s);
+                try {
+                    sendGrabJob(s);
+                } catch (InterruptedException e) {
+                    LOG.warn("Interrupted while waiting for okay to send " +
+                             "grab job", e);
+                }
                 break;
             case NO_JOB:
                 LOG.debug("Worker " + this + " sending pre sleep after no_job");
