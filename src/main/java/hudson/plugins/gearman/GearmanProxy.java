@@ -21,6 +21,8 @@ package hudson.plugins.gearman;
 import hudson.model.Computer;
 import hudson.model.Node;
 import hudson.model.Run;
+import hudson.model.Queue;
+import hudson.model.queue.CauseOfBlockage;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -49,6 +51,7 @@ public class GearmanProxy {
     // handles to gearman workers
     private final List<AbstractWorkerThread> gewtHandles;
     private final List<AbstractWorkerThread> gmwtHandles;
+    private final List<AvailabilityMonitor> availabilityMonitors;
     private final String masterName;
 
     // Singleton instance
@@ -63,6 +66,7 @@ public class GearmanProxy {
     private GearmanProxy() {
         gewtHandles = Collections.synchronizedList(new ArrayList<AbstractWorkerThread>());
         gmwtHandles = Collections.synchronizedList(new ArrayList<AbstractWorkerThread>());
+        availabilityMonitors = Collections.synchronizedList(new ArrayList<AvailabilityMonitor>());
 
         Computer master = null;
         String hostname = Constants.GEARMAN_DEFAULT_EXECUTOR_NAME;
@@ -151,7 +155,7 @@ public class GearmanProxy {
                 GearmanPluginConfig.get().getHost(),
                 GearmanPluginConfig.get().getPort(),
                 masterName + "_manager",
-                masterName);
+                masterName, new NoopAvailabilityMonitor());
         gwt.start();
         gmwtHandles.add(gwt);
 
@@ -165,6 +169,7 @@ public class GearmanProxy {
     public void createExecutorWorkersOnNode(Computer computer) {
 
         Node node = computer.getNode();
+        AvailabilityMonitor availability = getAvailabilityMonitor(node);
 
         int executors = computer.getExecutors().size();
         for (int i = 0; i < executors; i++) {
@@ -175,12 +180,12 @@ public class GearmanProxy {
                 nodeName = masterName;
             }
 
-            AbstractWorkerThread ewt  = new ExecutorWorkerThread(GearmanPluginConfig.get().getHost(),
+            AbstractWorkerThread ewt  = new ExecutorWorkerThread(
+                    GearmanPluginConfig.get().getHost(),
                     GearmanPluginConfig.get().getPort(),
                     nodeName+"_exec-"+Integer.toString(i),
-                    node, masterName);
+                    node, masterName, availability);
 
-            //ewt.registerJobs();
             ewt.start();
             gewtHandles.add(ewt);
         }
@@ -199,6 +204,12 @@ public class GearmanProxy {
                 gewtHandle.stop();
             }
             gewtHandles.clear();
+        }
+
+        synchronized (availabilityMonitors) {
+            // They will be recreated if/when the
+            // ExecutorWorkerThreads are recreated.
+            availabilityMonitors.clear();
         }
 
         synchronized(gmwtHandles) {
@@ -221,6 +232,7 @@ public class GearmanProxy {
      *
      */
     public void stop(Computer computer) {
+        Node node = computer.getNode();
 
         // find the computer in the executor workers list and stop it
         synchronized(gewtHandles) {
@@ -232,6 +244,7 @@ public class GearmanProxy {
                 }
              }
         }
+        removeAvailabilityMonitor(node);
 
         logger.info("---- Num of executors running = " + getNumExecutors());
     }
@@ -257,31 +270,70 @@ public class GearmanProxy {
         return gmwtHandles;
     }
 
-    public void onBuildStarted(Run r) {
+    public void onBuildFinalized(Run r) {
         Computer computer = r.getExecutor().getOwner();
-        // find the computer in the executor workers list and stop it
+        // A build just finished, so let the AvailabilityMonitor
+        // associated with its node wake up any workers who may be
+        // waiting for the lock.
 
         synchronized(gewtHandles) {
             for (Iterator<AbstractWorkerThread> it = gewtHandles.iterator(); it.hasNext(); ) {
                 AbstractWorkerThread t = it.next();
                 if (t.name.contains(computer.getName())) {
-                    ((ExecutorWorkerThread)t).onBuildStarted();
+                    t.getAvailability().wake();
                 }
              }
         }
     }
 
-    public void onBuildFinalized(Run r) {
-        Computer computer = r.getExecutor().getOwner();
-        // find the computer in the executor workers list and stop it
+    public AvailabilityMonitor getAvailabilityMonitor(Node node) {
+        AvailabilityMonitor availability;
 
+        synchronized (availabilityMonitors) {
+            for (Iterator<AvailabilityMonitor> it =
+                     availabilityMonitors.iterator(); it.hasNext(); ) {
+                availability = it.next();
+                if (((NodeAvailabilityMonitor)availability).getNode() == node) {
+                    return availability;
+                }
+            }
+            availability = new NodeAvailabilityMonitor(node);
+            availabilityMonitors.add(availability);
+            return availability;
+        }
+    }
+
+    public void removeAvailabilityMonitor(Node node) {
+        AvailabilityMonitor availability;
+
+        synchronized (availabilityMonitors) {
+            for (Iterator<AvailabilityMonitor> it =
+                     availabilityMonitors.iterator(); it.hasNext(); ) {
+                availability = it.next();
+                if (((NodeAvailabilityMonitor)availability).getNode() == node) {
+                    it.remove();
+                }
+            }
+        }
+
+    }
+
+    public CauseOfBlockage canTake(Node node,
+                                   Queue.BuildableItem item) {
+        // Ask the AvailabilityMonitor for this node if it's okay to
+        // run this build.
         synchronized(gewtHandles) {
             for (Iterator<AbstractWorkerThread> it = gewtHandles.iterator(); it.hasNext(); ) {
-                AbstractWorkerThread t = it.next();
-                if (t.name.contains(computer.getName())) {
-                    ((ExecutorWorkerThread)t).onBuildFinalized();
+                ExecutorWorkerThread t = ((ExecutorWorkerThread)it.next());
+                if (t.getNode() == node) {
+                    if (t.getAvailability().canTake(item)) {
+                        return null;
+                    } else {
+                        return new CauseOfBlockage.BecauseNodeIsBusy(node);
+                    }
                 }
              }
         }
+        return null;
     }
 }

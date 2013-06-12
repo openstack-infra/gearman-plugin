@@ -83,7 +83,7 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
     private final GearmanJobServerIpConnectionFactory connFactory = new GearmanNIOJobServerConnectionFactory();
     private volatile boolean jobUniqueIdRequired = false;
     private FunctionRegistry functionRegistry;
-    private AvailabilityChecker availability;
+    private AvailabilityMonitor availability;
 
     class GrabJobEventHandler implements GearmanServerResponseHandler {
 
@@ -154,6 +154,8 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
 
     public void reconnect() {
         LOG.info("Starting reconnect for " + session.toString());
+        // In case we held the availability lock earlier, release it.
+        availability.unlock(this);
         try {
             session.initSession(ioAvailable, this);
             if (id != null) {
@@ -172,12 +174,12 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
         LOG.info("Ending reconnect for " + session.toString());
     }
 
-    public MyGearmanWorkerImpl(AvailabilityChecker availability) {
+    public MyGearmanWorkerImpl(AvailabilityMonitor availability) {
         this (null, availability);
     }
 
     public MyGearmanWorkerImpl(ExecutorService executorService,
-                               AvailabilityChecker availability) {
+                               AvailabilityMonitor availability) {
         this.availability = availability;
         functionList = new LinkedList<GearmanFunction>();
         id = DESCRIPION_PREFIX + ":" + Thread.currentThread().getId();
@@ -354,7 +356,10 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
     }
 
     private void sendGrabJob(GearmanJobServerSession s) throws InterruptedException {
-        availability.waitUntilOkayToGrabJob();
+        // If we can get the lock, this will prevent other workers and
+        // Jenkins itself from scheduling builds on this node.  If we
+        // can not get the lock, this will wait for it.
+        availability.lock(this);
 
         GearmanTask grabJobTask = new GearmanTask(
             new GrabJobEventHandler(s),
@@ -393,6 +398,9 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
                 }
                 break;
             case NO_JOB:
+                // We didn't get a job, so allow other workers or
+                // Jenkins to schedule on this node.
+                availability.unlock(this);
                 LOG.debug("Worker " + this + " sending pre sleep after no_job");
                 GearmanTask preSleepTask = new GearmanTask(new GrabJobEventHandler(s),
                         new GearmanPacketImpl(GearmanPacketMagic.REQ,

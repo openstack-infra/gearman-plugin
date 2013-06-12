@@ -41,8 +41,8 @@ public class ManagementWorkerThread extends AbstractWorkerThread{
     private boolean registered = false;
     private final String masterName;
 
-    public ManagementWorkerThread(String host, int port, String name, String masterName){
-        super(host, port, name, new AvailabilityChecker(false));
+    public ManagementWorkerThread(String host, int port, String name, String masterName, AvailabilityMonitor availability){
+        super(host, port, name, availability);
         this.masterName = masterName;
     }
 

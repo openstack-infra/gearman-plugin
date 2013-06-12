@@ -56,13 +56,15 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
 
     // constructor
     public ExecutorWorkerThread(String host, int port, String name,
-                                Node node, String masterName) {
-        super(host, port, name, new AvailabilityChecker(true));
+                                Node node, String masterName,
+                                AvailabilityMonitor availability) {
+        super(host, port, name, availability);
         this.node = node;
         this.masterName = masterName;
     }
 
     protected void initWorker() {
+        availability.unlock(worker);
         super.initWorker();
         this.functionMap = new HashMap<String,GearmanFunctionFactory>();
     }
@@ -161,7 +163,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
                     String jobFunctionName = "build:" + projectName;
                     newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
                             jobFunctionName, StartJobWorker.class.getName(),
-                            project, this.node, this.masterName));
+                            project, this.node, this.masterName, worker));
                 } else { // register "build:$projectName:$projectLabel" if this
                          // node matches a node from the project label
 
@@ -178,12 +180,12 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
                             // register with label (i.e. "build:$projectName:$projectLabel")
                             newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
                                     jobFunctionName, StartJobWorker.class.getName(),
-                                    project, this.node, this.masterName));
+                                    project, this.node, this.masterName, worker));
                             jobFunctionName = "build:" + projectName;
                             // also register without label (i.e. "build:$projectName")
                             newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
                                     jobFunctionName, StartJobWorker.class.getName(),
-                                    project, this.node, this.masterName));
+                                    project, this.node, this.masterName, worker));
                         }
                     }
                 }
@@ -198,30 +200,5 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
 
     public synchronized Node getNode() {
         return node;
-    }
-
-    public void onBuildStarted() {
-        // a build has started on this computer
-        Computer computer = node.toComputer();
-        if (computer.countIdle() == 0) {
-            getAvailability().setOkayToGrabJob(false);
-        }
-
-        // TODO: There is a race condition here -- a worker may have
-        // just scheduled a build right as Jenkins started one from a
-        // non-gearman trigger.  In that case, we should dequeue that
-        // build and disconnect the worker (which will cause Gearman
-        // to re-queue the job).
-    }
-
-    public void onBuildFinalized() {
-        // a build has completed on this executor
-        Computer computer = node.toComputer();
-
-        getAvailability().setOkayToGrabJob(true);
-
-        // TODO: There could still be jobs in the queue that may or
-        // may not be assigned to this computer.  If there are, we
-        // should avoid grabbing jobs until that condition has passed.
     }
 }

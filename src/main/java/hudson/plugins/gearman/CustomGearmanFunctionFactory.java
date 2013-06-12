@@ -43,37 +43,38 @@ public class CustomGearmanFunctionFactory extends DefaultGearmanFunctionFactory 
     private final Node node;
     private final String theClass;
     private final String masterName;
+    private final MyGearmanWorkerImpl worker;
 
     private static final org.slf4j.Logger LOG =  LoggerFactory.getLogger(
             Constants.GEARMAN_WORKER_LOGGER_NAME);
 
     public CustomGearmanFunctionFactory(String functionName, String className,
                                         AbstractProject<?,?> project, Node node,
-                                        String masterName) {
+                                        String masterName,
+                                        MyGearmanWorkerImpl worker) {
         super(functionName, className);
         this.theClass = className;
         this.project = project;
         this.node = node;
         this.masterName = masterName;
+        this.worker = worker;
     }
 
 
     @Override
     public GearmanFunction getFunction() {
-        return createFunctionInstance(theClass, project, node, masterName);
+        return createFunctionInstance(theClass, project, node, masterName,
+                                      worker);
     }
 
-
-
-
-    private static GearmanFunction createFunctionInstance(String className, AbstractProject<?,?> project, Node node, String masterName) {
+    private static GearmanFunction createFunctionInstance(String className, AbstractProject<?,?> project, Node node, String masterName, MyGearmanWorkerImpl worker) {
 
         GearmanFunction f = null;
         try {
 
             Class<?> c = Class.forName(className);
-            Constructor<?> con = c.getConstructor(new Class[]{Project.class, Node.class, String.class});
-            Object o = con.newInstance(new Object[] {project, node, masterName});
+            Constructor<?> con = c.getConstructor(new Class[]{Project.class, Node.class, String.class, MyGearmanWorkerImpl.class});
+            Object o = con.newInstance(new Object[] {project, node, masterName, worker});
 
             if (o instanceof GearmanFunction) {
                 f = (GearmanFunction) o;

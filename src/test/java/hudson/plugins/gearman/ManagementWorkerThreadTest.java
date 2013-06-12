@@ -57,7 +57,7 @@ public class ManagementWorkerThreadTest {
     @Test
     public void testRegisterJobs() {
         AbstractWorkerThread manager = new ManagementWorkerThread("GearmanServer", 4730,
-                                                                  "master_manager", "master");
+                                                                  "master_manager", "master", new NoopAvailabilityMonitor());
         manager.registerJobs();
         Set<String> functions = manager.worker.getRegisteredFunctions();
         assertEquals("set_description:master", functions.toArray()[0]);
@@ -67,7 +67,7 @@ public class ManagementWorkerThreadTest {
     @Test
     public void testManagerId() {
         AbstractWorkerThread manager = new ManagementWorkerThread("GearmanServer", 4730,
-                                                                  "master_manager", "master");
+                                                                  "master_manager", "master", new NoopAvailabilityMonitor());
         assertEquals("master_manager", manager.getName());
     }
 

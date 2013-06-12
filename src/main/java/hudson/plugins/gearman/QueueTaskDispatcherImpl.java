@@ -1,6 +1,7 @@
 /*
  *
  * Copyright 2013 Hewlett-Packard Development Company, L.P.
+ * Copyright 2013 OpenStack Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,43 +16,35 @@
  * limitations under the License.
  *
  */
-
 package hudson.plugins.gearman;
+
+import hudson.Extension;
+import hudson.model.Node;
+import hudson.model.Queue;
+import hudson.model.queue.QueueTaskDispatcher;
+import hudson.model.queue.CauseOfBlockage;
+
+import java.io.IOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-/*
- * This a fake worker which is only used for testing
- *
- * @author Khai Do
- *
- */
-public class FakeWorkerThread extends AbstractWorkerThread{
+@Extension
+public class QueueTaskDispatcherImpl extends QueueTaskDispatcher {
 
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
-    public FakeWorkerThread(String host, int port, String name,
-                            AvailabilityMonitor availability) {
-        super(host, port, name, availability);
-    }
 
-    /**
-     * Fake registerJobs
-     */
     @Override
-    public void registerJobs() {
+    public CauseOfBlockage canTake(Node node,
+                                   Queue.BuildableItem item) {
+        // update only when gearman-plugin is enabled
+        if (!GearmanPluginConfig.get().enablePlugin()) {
+            return null;
+        }
 
+        return GearmanProxy.getInstance().canTake(node, item);
     }
-
-    /**
-     * Fake run
-     */
-    @Override
-    public void run() {
-
-    }
-
 }

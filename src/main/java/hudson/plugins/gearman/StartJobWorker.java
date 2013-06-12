@@ -72,11 +72,14 @@ public class StartJobWorker extends AbstractGearmanFunction {
     Node node;
     Project<?, ?> project;
     String masterName;
+    MyGearmanWorkerImpl worker;
 
-    public StartJobWorker(Project<?, ?> project, Node node, String masterName) {
+    public StartJobWorker(Project<?, ?> project, Node node, String masterName,
+                          MyGearmanWorkerImpl worker) {
         this.project = project;
         this.node = node;
         this.masterName = masterName;
+        this.worker = worker;
     }
 
    private String buildStatusData(AbstractBuild<?, ?> build) {
@@ -152,6 +155,11 @@ public class StartJobWorker extends AbstractGearmanFunction {
         Action params = new NodeParametersAction(buildParams, decodedUniqueId);
         Action [] actions = {runNode, params};
 
+        AvailabilityMonitor availability =
+            GearmanProxy.getInstance().getAvailabilityMonitor(node);
+
+        availability.expectUUID(decodedUniqueId);
+
         // schedule jenkins to build project
         logger.info("---- Scheduling "+project.getName()+" build #" +
                 project.getNextBuildNumber()+" on " + runNodeName
@@ -180,6 +188,8 @@ public class StartJobWorker extends AbstractGearmanFunction {
             // wait for start of build
             Queue.Executable exec = future.getStartCondition().get();
             AbstractBuild<?, ?> currBuild = (AbstractBuild<?, ?>) exec;
+
+            availability.unlock(worker);
 
             long now = new Date().getTime();
             int duration = (int) (now - currBuild.getStartTimeInMillis());
@@ -246,9 +256,11 @@ public class StartJobWorker extends AbstractGearmanFunction {
             }
 
         } catch (InterruptedException e) {
+            availability.unlock(worker);
             jobFailureMsg = e.getMessage();
             jobResult = false;
         } catch (ExecutionException e) {
+            availability.unlock(worker);
             jobFailureMsg = e.getMessage();
             jobResult = false;
         }

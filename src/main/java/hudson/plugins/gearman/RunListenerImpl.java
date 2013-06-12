@@ -39,16 +39,6 @@ public class RunListenerImpl extends RunListener<Run> {
 
 
     @Override
-    public void onStarted(Run r, TaskListener listener) {
-        // update only when gearman-plugin is enabled
-        if (!GearmanPluginConfig.get().enablePlugin()) {
-            return;
-        }
-
-        GearmanProxy.getInstance().onBuildStarted(r);
-    }
-
-    @Override
     public void onFinalized(Run r) {
         // update only when gearman-plugin is enabled
         if (!GearmanPluginConfig.get().enablePlugin()) {

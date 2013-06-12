@@ -44,12 +44,12 @@ public abstract class AbstractWorkerThread implements Runnable {
     protected String name;
     protected MyGearmanWorkerImpl worker;
     protected GearmanNIOJobServerConnection conn;
-    protected AvailabilityChecker availability;
+    protected AvailabilityMonitor availability;
     private Thread thread;
     private boolean running = false;
 
     public AbstractWorkerThread(String host, int port, String name,
-                                AvailabilityChecker availability) {
+                                AvailabilityMonitor availability) {
         setHost(host);
         setPort(port);
         setName(name);
@@ -86,11 +86,11 @@ public abstract class AbstractWorkerThread implements Runnable {
         this.name = name;
     }
 
-    public AvailabilityChecker getAvailability() {
+    public AvailabilityMonitor getAvailability() {
         return availability;
     }
 
-    public void setAvailability(AvailabilityChecker availability) {
+    public void setAvailability(AvailabilityMonitor availability) {
         this.availability = availability;
     }
 
