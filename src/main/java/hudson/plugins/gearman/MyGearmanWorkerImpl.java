@@ -563,8 +563,16 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
             } else {
                 executorService.submit(fun);
             }
+        } catch (IOException io) {
+            LOG.warn("Receieved IOException while" +
+                     " running function",io);
+            session.closeSession();
+            // The reconnect will unlock the monitor if needed.
         } catch (Exception e) {
             LOG.warn("Exception while executing function " + fun.getName(), e);
+            // Unlock the monitor for this worker in case we didn't
+            // make it as far as the schedule job unlock.
+            availability.unlock(this);
         }
     }
 

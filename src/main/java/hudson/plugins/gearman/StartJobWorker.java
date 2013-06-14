@@ -105,22 +105,30 @@ public class StartJobWorker extends AbstractGearmanFunction {
        return gson.toJson(data);
    }
 
+
     /*
      * The Gearman Function
      * @see org.gearman.worker.AbstractGearmanFunction#executeFunction()
      */
     @Override
     public GearmanJobResult executeFunction() {
+        try {
+            return safeExecuteFunction();
+        } catch (Exception inner) {
+            RuntimeException outer = new RuntimeException(inner);
+            throw outer;
+        }
+    }
+
+    private GearmanJobResult safeExecuteFunction()
+        throws Exception
+    {
         logger.info("---- Running executeFunction in " + name + " ----");
 
         // decode the uniqueId from the client
         String decodedUniqueId = null;
         if (this.uniqueId != null) {
-            try {
-                decodedUniqueId = new String(this.uniqueId, "UTF-8");
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
+            decodedUniqueId = new String(this.uniqueId, "UTF-8");
         }
 
         // create new parameter objects to pass to jenkins build
@@ -128,11 +136,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
         String decodedData = null;
         if (this.data != null) {
             // decode the data from the client
-            try {
-                decodedData = new String((byte[]) this.data, "UTF-8");
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
+            decodedData = new String((byte[]) this.data, "UTF-8");
             // convert parameters passed in from client to hash map
             Gson gson = new Gson();
             Map<String, String> inParams = gson.fromJson(decodedData,
@@ -184,89 +188,56 @@ public class StartJobWorker extends AbstractGearmanFunction {
             }
         }
 
-        try {
-            // wait for start of build
-            Queue.Executable exec = future.getStartCondition().get();
-            AbstractBuild<?, ?> currBuild = (AbstractBuild<?, ?>) exec;
+        // wait for start of build
+        Queue.Executable exec = future.getStartCondition().get();
+        AbstractBuild<?, ?> currBuild = (AbstractBuild<?, ?>) exec;
 
-            availability.unlock(worker);
+        availability.unlock(worker);
 
-            long now = new Date().getTime();
-            int duration = (int) (now - currBuild.getStartTimeInMillis());
-            int estimatedDuration = (int) currBuild.getEstimatedDuration();
-            jobData = buildStatusData(currBuild);
+        long now = new Date().getTime();
+        int duration = (int) (now - currBuild.getStartTimeInMillis());
+        int estimatedDuration = (int) currBuild.getEstimatedDuration();
+        jobData = buildStatusData(currBuild);
 
-            // If we found a session object in the hacky bit above,
-            // use it to send a WORK_STATUS packet indicating the
-            // start of the build.
-            if (sess != null) {
-                try {
-                    sendData(jobData.getBytes());
-                    sess.driveSessionIO();
+        sendData(jobData.getBytes());
+        sess.driveSessionIO();
+        sendStatus(estimatedDuration, duration);
+        sess.driveSessionIO();
+
+        while (!future.isDone()) {
+            // wait for jenkins build to complete
+            try {
+                future.get(10, TimeUnit.SECONDS);
+            } catch (TimeoutException e) {
+                now = new Date().getTime();
+                duration = (int) (now - currBuild.getStartTimeInMillis());
+                estimatedDuration = (int) currBuild.getEstimatedDuration();
+                if (sess != null) {
                     sendStatus(estimatedDuration, duration);
                     sess.driveSessionIO();
-                } catch (IOException e) {
-                    sess = null;
-                    logger.warn("IO Exception when driving session IO");
-                    e.printStackTrace();
                 }
             }
+        }
 
-            while (!future.isDone()) {
-                // wait for jenkins build to complete
-                try {
-                    future.get(10, TimeUnit.SECONDS);
-                } catch (TimeoutException e) {
-                    now = new Date().getTime();
-                    duration = (int) (now - currBuild.getStartTimeInMillis());
-                    estimatedDuration = (int) currBuild.getEstimatedDuration();
-                    if (sess != null) {
-                        try {
-                            sendStatus(estimatedDuration, duration);
-                            sess.driveSessionIO();
-                        } catch (IOException e2) {
-                            sess = null;
-                            logger.warn("IO Exception when driving session IO");
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            }
+        exec = future.get();
 
-            exec = future.get();
+        jobData = buildStatusData(currBuild);
+        if (sess != null) {
+            sendData(jobData.getBytes());
+            sess.driveSessionIO();
+        }
 
-            jobData = buildStatusData(currBuild);
-            if (sess != null) {
-                try {
-                    sendData(jobData.getBytes());
-                    sess.driveSessionIO();
-                } catch (IOException e) {
-                    sess = null;
-                    logger.warn("IO Exception when driving session IO");
-                    e.printStackTrace();
-                }
-            }
-
-            // check Jenkins build results
-            Result result = currBuild.getResult();
-            if (result == Result.SUCCESS) {
-                jobResult = true;
-            } else {
-                jobResult = false;
-            }
-
-        } catch (InterruptedException e) {
-            availability.unlock(worker);
-            jobFailureMsg = e.getMessage();
-            jobResult = false;
-        } catch (ExecutionException e) {
-            availability.unlock(worker);
-            jobFailureMsg = e.getMessage();
+        // check Jenkins build results
+        Result result = currBuild.getResult();
+        if (result == Result.SUCCESS) {
+            jobResult = true;
+        } else {
             jobResult = false;
         }
 
         // return result to client
-        GearmanJobResult gjr = new GearmanJobResultImpl(this.jobHandle, jobResult,
+        GearmanJobResult gjr = new GearmanJobResultImpl(
+                this.jobHandle, jobResult,
                 "".getBytes(), "".getBytes(),
                 jobFailureMsg.getBytes(), 0, 0);
         return gjr;
