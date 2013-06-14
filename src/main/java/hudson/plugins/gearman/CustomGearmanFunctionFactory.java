@@ -73,7 +73,7 @@ public class CustomGearmanFunctionFactory extends DefaultGearmanFunctionFactory 
         try {
 
             Class<?> c = Class.forName(className);
-            Constructor<?> con = c.getConstructor(new Class[]{Project.class, Node.class, String.class, MyGearmanWorkerImpl.class});
+            Constructor<?> con = c.getConstructor(new Class[]{AbstractProject.class, Node.class, String.class, MyGearmanWorkerImpl.class});
             Object o = con.newInstance(new Object[] {project, node, masterName, worker});
 
             if (o instanceof GearmanFunction) {

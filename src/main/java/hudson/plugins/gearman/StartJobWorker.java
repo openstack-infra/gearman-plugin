@@ -70,11 +70,11 @@ public class StartJobWorker extends AbstractGearmanFunction {
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
     Node node;
-    Project<?, ?> project;
+    AbstractProject<?, ?> project;
     String masterName;
     MyGearmanWorkerImpl worker;
 
-    public StartJobWorker(Project<?, ?> project, Node node, String masterName,
+    public StartJobWorker(AbstractProject<?, ?> project, Node node, String masterName,
                           MyGearmanWorkerImpl worker) {
         this.project = project;
         this.node = node;
