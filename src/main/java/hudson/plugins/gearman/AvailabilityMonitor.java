@@ -22,7 +22,8 @@ import hudson.model.Queue;
 public interface AvailabilityMonitor {
 
     // Reserve exclusive access for this worker.
-    public void lock(MyGearmanWorkerImpl worker);
+    public void lock(MyGearmanWorkerImpl worker)
+        throws InterruptedException;
 
     // Release exclusive access for this worker.
     public void unlock(MyGearmanWorkerImpl worker);

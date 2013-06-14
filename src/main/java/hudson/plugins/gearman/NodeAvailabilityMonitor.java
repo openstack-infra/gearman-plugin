@@ -46,7 +46,9 @@ public class NodeAvailabilityMonitor implements AvailabilityMonitor {
         return node;
     }
 
-    public void lock(MyGearmanWorkerImpl worker) {
+    public void lock(MyGearmanWorkerImpl worker)
+        throws InterruptedException
+    {
         Computer computer = node.toComputer();
 
         logger.debug("AvailabilityMonitor lock request: " + worker);
@@ -75,16 +77,13 @@ public class NodeAvailabilityMonitor implements AvailabilityMonitor {
             }
             if (busy) {
                 synchronized(this) {
-                    try {
-                        // We get synchronous notification when a
-                        // build finishes, but there are lots of other
-                        // reasons circumstances could change (adding
-                        // an executor, canceling shutdown, etc), so
-                        // we slowly busy wait to cover all those
-                        // reasons.
-                        this.wait(5000);
-                    } catch (InterruptedException e) {
-                    }
+                    // We get synchronous notification when a
+                    // build finishes, but there are lots of other
+                    // reasons circumstances could change (adding
+                    // an executor, canceling shutdown, etc), so
+                    // we slowly busy wait to cover all those
+                    // reasons.
+                    this.wait(5000);
                 }
             }
         }
