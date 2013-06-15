@@ -198,11 +198,15 @@ public class GearmanProxy {
      */
     public void stopAll() {
         // stop gearman executors
-        synchronized(gewtHandles) {
-            for (AbstractWorkerThread gewtHandle : gewtHandles) { // stop executors
-                gewtHandle.stop();
-            }
+        List<AbstractWorkerThread> stopHandles;
+
+        synchronized (gewtHandles) {
+            stopHandles = new ArrayList<AbstractWorkerThread>(gewtHandles);
             gewtHandles.clear();
+        }
+
+        for (AbstractWorkerThread wt : stopHandles) { // stop executors
+            wt.stop();
         }
 
         synchronized (availabilityMonitors) {
@@ -211,11 +215,14 @@ public class GearmanProxy {
             availabilityMonitors.clear();
         }
 
-        synchronized(gmwtHandles) {
-            for (AbstractWorkerThread gmwtHandle : gmwtHandles) { // stop executors
-                gmwtHandle.stop();
-            }
+        stopHandles = new ArrayList<AbstractWorkerThread>();
+        synchronized (gmwtHandles) {
+            stopHandles = new ArrayList<AbstractWorkerThread>(gmwtHandles);
             gmwtHandles.clear();
+        }
+
+        for (AbstractWorkerThread wt : stopHandles) { // stop executors
+            wt.stop();
         }
 
         logger.info("---- Num of executors running = " + getNumExecutors());
@@ -232,16 +239,21 @@ public class GearmanProxy {
      */
     public void stop(Computer computer) {
         Node node = computer.getNode();
-
+        AbstractWorkerThread workerThread = null;
         // find the computer in the executor workers list and stop it
         synchronized(gewtHandles) {
             for (Iterator<AbstractWorkerThread> it = gewtHandles.iterator(); it.hasNext(); ) {
                 AbstractWorkerThread t = it.next();
                 if (t.name.contains(computer.getName())) {
-                    t.stop();
+                    workerThread = t;
                     it.remove();
+                    break;
                 }
              }
+        }
+
+        if (workerThread != null) {
+            workerThread.stop();
         }
         removeAvailabilityMonitor(node);
 
@@ -321,17 +333,23 @@ public class GearmanProxy {
                                    Queue.BuildableItem item) {
         // Ask the AvailabilityMonitor for this node if it's okay to
         // run this build.
+        ExecutorWorkerThread workerThread = null;
+
         synchronized(gewtHandles) {
             for (Iterator<AbstractWorkerThread> it = gewtHandles.iterator(); it.hasNext(); ) {
                 ExecutorWorkerThread t = ((ExecutorWorkerThread)it.next());
                 if (t.getNode() == node) {
-                    if (t.getAvailability().canTake(item)) {
-                        return null;
-                    } else {
-                        return new CauseOfBlockage.BecauseNodeIsBusy(node);
-                    }
+                    workerThread = t;
+                    break;
                 }
              }
+        }
+        if (workerThread != null) {
+            if (workerThread.getAvailability().canTake(item)) {
+                return null;
+            } else {
+                return new CauseOfBlockage.BecauseNodeIsBusy(node);
+            }
         }
         return null;
     }
