@@ -75,14 +75,14 @@ public class GearmanProxy {
             master = Jenkins.getInstance().getComputer("");
             hostname = master.getHostName();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.warn("Exception while getting hostname", e);
         }
         // master node may not be enabled so get masterName from system
         if (master == null) {
             try {
                 hostname = java.net.InetAddress.getLocalHost().getHostName();
             } catch (UnknownHostException e) {
-                e.printStackTrace();
+                logger.warn("Exception while getting hostname", e);
             }
         }
 
@@ -117,8 +117,7 @@ public class GearmanProxy {
         } catch (NullPointerException npe) {
             logger.info("---- Master is offline");
         } catch (Exception e) {
-            logger.info("---- Can't get Master");
-            e.printStackTrace();
+            logger.error("Exception while finding master", e);
         }
 
         if (masterNode != null) {

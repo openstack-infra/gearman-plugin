@@ -123,24 +123,18 @@ public abstract class AbstractWorkerThread implements Runnable {
      */
     public void stop() {
         running = false;
+
+        worker.stop();
+
         // Interrupt the thread so it unblocks any blocking call
-
-        if (worker.isRunning()) {
-            try {
-                worker.stop();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
         thread.interrupt();
 
         // Wait until the thread exits
         try {
             thread.join();
-        } catch (InterruptedException ex) {
+        } catch (InterruptedException e) {
             // Unexpected interruption
-            ex.printStackTrace();
+            logger.error("Exception while waiting for thread to join", e);
         }
     }
 
@@ -159,13 +153,17 @@ public abstract class AbstractWorkerThread implements Runnable {
                 worker.setJobUniqueIdRequired(true);
                 registerJobs();
                 worker.work();
-            } catch (Exception ex) {
-                logger.error("Exception while running worker", ex);
+            } catch (Exception e) {
+                logger.error("Exception while running worker", e);
+                if (!running) continue;
                 worker.shutdown();
+                if (!running) continue;
                 try {
                     Thread.sleep(2000);
                 } catch (InterruptedException e2) {
+                    logger.error("Exception while waiting to restart worker", e2);
                 }
+                if (!running) continue;
                 initWorker();
             }
         }
