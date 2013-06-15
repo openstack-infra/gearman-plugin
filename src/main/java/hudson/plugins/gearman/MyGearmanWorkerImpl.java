@@ -574,6 +574,16 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
             // make it as far as the schedule job unlock.
             availability.unlock(this);
         }
+
+        // We should have submitted either a WORK_EXCEPTION, COMPLETE,
+        // or FAIL; make sure it gets sent.
+        try {
+            session.driveSessionIO();
+        } catch (IOException ioe) {
+            LOG.warn("Received IOException while driving" +
+                     " IO on session " + session, ioe);
+            session.closeSession();
+        }
     }
 
     private GearmanPacketType getGrabJobPacketType() {
