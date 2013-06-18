@@ -16,6 +16,10 @@
    limitations under the License.
 -->
 
+<!-- 
+    Pass in the version on manual builds (i.e. mvn clean package -Dproject-version=1.0)
+ -->
+
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
@@ -29,7 +33,7 @@
 
     <artifactId>gearman-plugin</artifactId>
     <packaging>hpi</packaging>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>${project-version}</version>
 
     <name>Gearman Plugin</name>
     <description>Integrates Gearman application framework with Jenkins</description>
@@ -52,8 +56,8 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/openstack-infra/gearman-plugin.git</connection>
-        <developerConnection>scm:git:git@github.com:openstack-infra/gearman-plugin.git</developerConnection>
+        <connection>scm:git:ssh://github.com/openstack-infra/gearman-plugin.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/openstack-infra/gearman-plugin.git</developerConnection>
         <url>https://github.com/openstack-infra/gearman-plugin</url>
     </scm>
 
@@ -77,8 +81,8 @@
 
     <distributionManagement>
         <repository>
-            <id>java.net-m2-repository</id>
-            <url>http://maven.jenkins-ci.org/content/repositories/releases/</url>
+            <id>maven.jenkins-ci.org</id>
+            <url>http://maven.jenkins-ci.org:8081/content/repositories/releases/</url>
         </repository>
         <site>
             <id>github-project-site</id>
