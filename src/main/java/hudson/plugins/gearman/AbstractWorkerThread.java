@@ -160,14 +160,14 @@ public abstract class AbstractWorkerThread implements Runnable {
                 registerJobs();
                 worker.work();
             } catch (Exception e) {
-                logger.error("Exception while running worker", e);
+                logger.error("---- Exception while running worker " + getName(), e);
                 if (!running) continue;
                 worker.shutdown();
                 if (!running) continue;
                 try {
                     Thread.sleep(2000);
                 } catch (InterruptedException e2) {
-                    logger.error("Exception while waiting to restart worker", e2);
+                    logger.error("---- Exception while waiting to restart worker " + getName(), e2);
                 }
                 if (!running) continue;
                 initWorker();
