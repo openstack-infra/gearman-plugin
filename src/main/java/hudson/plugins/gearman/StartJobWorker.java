@@ -123,8 +123,6 @@ public class StartJobWorker extends AbstractGearmanFunction {
     private GearmanJobResult safeExecuteFunction()
         throws Exception
     {
-        logger.info("---- Running executeFunction in " + name + " ----");
-
         // decode the uniqueId from the client
         String decodedUniqueId = null;
         if (this.uniqueId != null) {
@@ -165,9 +163,10 @@ public class StartJobWorker extends AbstractGearmanFunction {
         availability.expectUUID(decodedUniqueId);
 
         // schedule jenkins to build project
-        logger.info("---- Scheduling "+project.getName()+" build #" +
-                project.getNextBuildNumber()+" on " + runNodeName
-                + " with UUID " + decodedUniqueId + " and build params " + buildParams);
+        logger.info("---- Worker " + this.worker + " scheduling " +
+                    project.getName()+" build #" +
+                    project.getNextBuildNumber()+" on " + runNodeName
+                    + " with UUID " + decodedUniqueId + " and build params " + buildParams);
         QueueTaskFuture<?> future = project.scheduleBuild2(0, new Cause.UserIdCause(), actions);
 
         // check build and pass results back to client

@@ -50,9 +50,6 @@ public class SaveableListenerImpl extends SaveableListener {
      */
     @Override
     public void onChange(Saveable o, XmlFile file) {
-        logger.info("---- " + SaveableListenerImpl.class.getName() + ":"
-                + " onChange");
-
         // update functions only when gearman-plugin is enabled
         if (!GearmanPluginConfig.get().enablePlugin()) {
             return;

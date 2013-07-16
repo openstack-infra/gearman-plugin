@@ -153,7 +153,7 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
     }
 
     public void reconnect() {
-        LOG.info("Starting reconnect for " + session.toString());
+        LOG.info("---- Worker " + this + " starting reconnect for " + session.toString());
         // In case we held the availability lock earlier, release it.
         availability.unlock(this);
         try {
@@ -169,11 +169,11 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
             try {
                 Thread.sleep(2000);
             } catch (InterruptedException e1) {
-                LOG.warn("Interrupted while reconnecting", e);
+                LOG.warn("---- Worker " + this + " interrupted while reconnecting", e);
                 return;
             }
         }
-        LOG.info("Ending reconnect for " + session.toString());
+        LOG.info("---- Worker " + this + " ending reconnect for " + session.toString());
     }
 
     public MyGearmanWorkerImpl(AvailabilityMonitor availability) {
@@ -194,7 +194,7 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
         try {
             ioAvailable = Selector.open();
         } catch (IOException ioe) {
-            LOG.warn("Failed to open IO selector.", ioe);
+            LOG.warn("---- Worker " + this + " failed to open IO selector", ioe);
         }
     }
 
@@ -204,6 +204,7 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
     }
 
     public void setFunctions(Set<GearmanFunctionFactory> functions) {
+        LOG.info("---- Worker " + this + " registering " + functions.size() + " functions");
         functionRegistry.setFunctions(functions);
         ioAvailable.wakeup();
     }
@@ -247,7 +248,7 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
             session.driveSessionIO();
             if (!isRunning()) return;
 
-            LOG.debug("Worker " + this + " has registered function " +
+            LOG.debug("---- Worker " + this + " registered function " +
                       factory.getFunctionName());
         }
 
@@ -262,7 +263,7 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
     }
 
     public void work() {
-        LOG.info("Starting work");
+        LOG.info("---- Worker " + this + " starting work");
 
         if (!state.equals(State.IDLE)) {
             throw new IllegalStateException("Can not call work while worker " +
@@ -273,21 +274,26 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
         boolean grabJobSent = false;
 
         while (isRunning()) {
+            LOG.debug("---- Worker " + this + " top of run loop");
+
             if (!session.isInitialized()) {
+                LOG.debug("---- Worker " + this + " run loop reconnect");
                 reconnect();
                 grabJobSent = false;
             }
 
             // if still disconnected, skip
             if (!session.isInitialized()) {
+                LOG.debug("---- Worker " + this + " run loop not initialized");
                 continue;
             }
 
             try {
+                LOG.debug("---- Worker " + this + " run loop register functions");
                 registerFunctions();
             } catch (IOException io) {
-                LOG.warn("Receieved IOException while" +
-                         " registering function", io);
+                LOG.warn("---- Worker " + this + " receieved IOException while" +
+                         " registering functions", io);
                 session.closeSession();
                 continue;
             }
@@ -295,31 +301,35 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
             if (!isRunning()) continue;
 
             if (functionList.isEmpty()) {
+                LOG.debug("---- Worker " + this + " run loop function list is empty while" +
+                          " checking for initial grab job");
                 if (!grabJobSent) {
                     // send the initial GRAB_JOB on reconnection.
-                    LOG.info("Worker " + this + " sending initial grab job");
+                    LOG.info("---- Worker " + this + " sending initial grab job");
                     try {
                         sendGrabJob(session);
                     } catch (InterruptedException e) {
-                        LOG.warn("Interrupted while waiting for okay to send " +
-                                 "grab job", e);
+                        LOG.warn("---- Worker " + this +
+                                 " interrupted while waiting for okay to send grab job", e);
                         continue;
                     }
                     grabJobSent = true;
                     try {
                         session.driveSessionIO();
                     } catch (IOException io) {
-                        LOG.warn("Receieved IOException while" +
+                        LOG.warn("---- Worker " + this + " receieved IOException while" +
                                  " sending initial grab job", io);
                         session.closeSession();
                         continue;
                     }
                 }
             }
+            LOG.debug("---- Worker " + this + " run loop finished initial grab job");
 
             if (!isRunning()) continue;
 
             if (functionList.isEmpty()) {
+                LOG.debug("---- Worker " + this + " function list empty; selecting");
                 int interestOps = SelectionKey.OP_READ;
                 if (session.sessionHasDataToWrite()) {
                     interestOps |= SelectionKey.OP_WRITE;
@@ -329,37 +339,43 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
                 try {
                     ioAvailable.select();
                 } catch (IOException io) {
-                    LOG.warn("Receieved IOException while" +
+                    LOG.warn("---- Worker " + this + " receieved IOException while" +
                              " selecting for IO", io);
                     session.closeSession();
                     continue;
                 }
             }
 
+            LOG.debug("---- Worker " + this + " run loop finished selecting");
             if (ioAvailable.selectedKeys().contains(session.getSelectionKey())) {
+                LOG.debug("---- Worker " + this + " received input in run loop");
                 if (!session.isInitialized()) {
+                    LOG.debug("---- Worker " + this + " session is no longer initialized");
                     continue;
                 }
                 try {
                     session.driveSessionIO();
                 } catch (IOException io) {
-                    LOG.warn("Received IOException while driving" +
+                    LOG.warn("---- Worker " + this + " received IOException while driving" +
                             " IO on session " + session, io);
                     session.closeSession();
                     continue;
                 }
             }
+            LOG.debug("---- Worker " + this + " run loop finished driving session io");
 
             if (!isRunning()) continue;
 
             //For the time being we will execute the jobs synchronously
             //in the future, I expect to change this.
             if (!functionList.isEmpty()) {
+                LOG.info("---- Worker " + this + " executing function");
                 GearmanFunction fun = functionList.remove();
                 submitFunction(fun);
                 // Send another grab_job on the next loop
                 grabJobSent = false;
             }
+            LOG.debug("---- Worker " + this + " bottom of run loop");
         }
 
         shutDownWorker(true);
@@ -384,26 +400,28 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
         GearmanPacket p = event.getPacket();
         GearmanJobServerSession s = event.getSession();
         GearmanPacketType t = p.getPacketType();
-        LOG.debug("Worker " + this + " handling session event" +
+        LOG.debug("---- Worker " + this + " handling session event" +
                   " ( Session = " + s + " Event = " + t + " )");
         switch (t) {
             case JOB_ASSIGN:
                 //TODO Figure out what the right behavior is if JobUUIDRequired was false when we submitted but is now true
+                LOG.info("---- Worker " + this + " received job assignment");
                 taskMap.remove(s);
                 addNewJob(event);
                 break;
             case JOB_ASSIGN_UNIQ:
                 //TODO Figure out what the right behavior is if JobUUIDRequired was true when we submitted but is now false
+                LOG.info("---- Worker " + this + " received unique job assignment");
                 taskMap.remove(s);
                 addNewJob(event);
                 break;
             case NOOP:
                 taskMap.remove(s);
-                LOG.debug("Worker " + this + " sending grab job after wakeup");
+                LOG.debug("---- Worker " + this + " sending grab job after wakeup");
                 try {
                     sendGrabJob(s);
                 } catch (InterruptedException e) {
-                    LOG.warn("Interrupted while waiting for okay to send " +
+                    LOG.warn("---- Worker " + this + " interrupted while waiting for okay to send " +
                              "grab job", e);
                 }
                 break;
@@ -411,7 +429,7 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
                 // We didn't get a job, so allow other workers or
                 // Jenkins to schedule on this node.
                 availability.unlock(this);
-                LOG.debug("Worker " + this + " sending pre sleep after no_job");
+                LOG.debug("---- Worker " + this + " sending pre sleep after no_job");
                 GearmanTask preSleepTask = new GearmanTask(new GrabJobEventHandler(s),
                         new GearmanPacketImpl(GearmanPacketMagic.REQ,
                         GearmanPacketType.PRE_SLEEP, new byte[0]));
@@ -426,8 +444,8 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
                 s.closeSession();
                 break;
             default:
-                LOG.warn("Received unknown packet type " + t +
-                        " from session " + s + ". Closing connection.");
+                LOG.warn("---- Worker " + this + " received unknown packet type " + t +
+                        " from session " + s + "; closing connection");
                 s.closeSession();
         }
     }
@@ -451,7 +469,7 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
 
         reconnect();
 
-        LOG.debug("Added server " + conn + " to worker " + this);
+        LOG.debug("---- Worker " + this + " added server " + conn);
         return true;
     }
 
@@ -511,7 +529,7 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
      * exceptions because closeSession does not throw an exception
      */
     private List<Exception> shutDownWorker(boolean completeTasks) {
-        LOG.info("Commencing shutdowm of worker " + this);
+        LOG.info("---- Worker " + this + " commencing shutdown");
 
         ArrayList<Exception> exceptions = new ArrayList<Exception>();
 
@@ -528,10 +546,10 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
         try {
             ioAvailable.close();
         } catch (IOException ioe) {
-            LOG.warn("Encountered IOException while closing selector for worker: ", ioe);
+            LOG.warn("---- Worker " + this + " encountered IOException while closing selector: ", ioe);
         }
         state = State.IDLE;
-        LOG.info("Completed shutdowm of worker " + this);
+        LOG.info("---- Worker " + this + " completed shutdown");
 
         return exceptions;
     }
@@ -578,12 +596,12 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
             // or FAIL; make sure it gets sent.
             session.driveSessionIO();
         } catch (IOException io) {
-            LOG.warn("Receieved IOException while" +
+            LOG.warn("---- Worker " + this + " receieved IOException while" +
                      " running function",io);
             session.closeSession();
             // The reconnect will unlock the monitor if needed.
         } catch (Exception e) {
-            LOG.warn("Exception while executing function " + fun.getName(), e);
+            LOG.warn("---- Worker " + this + " exception while executing function " + fun.getName(), e);
             // Unlock the monitor for this worker in case we didn't
             // make it as far as the schedule job unlock.
             availability.unlock(this);
