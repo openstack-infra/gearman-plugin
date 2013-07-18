@@ -19,9 +19,9 @@
 package hudson.plugins.gearman;
 
 import hudson.model.AbstractProject;
+import hudson.model.Computer;
 import hudson.model.Label;
 import hudson.model.Node;
-import hudson.model.Computer;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,7 +32,6 @@ import java.util.Set;
 import jenkins.model.Jenkins;
 
 import org.gearman.worker.GearmanFunctionFactory;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +62,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
         this.masterName = masterName;
     }
 
+    @Override
     protected void initWorker() {
         availability.unlock(worker);
         super.initWorker();
@@ -147,54 +147,61 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
     public void registerJobs() {
         HashMap<String,GearmanFunctionFactory> newFunctionMap = new HashMap<String,GearmanFunctionFactory>();
 
-        if (!this.node.toComputer().isOffline()) {
-            List<AbstractProject> allProjects = Jenkins.getInstance().getAllItems(AbstractProject.class);
-            for (AbstractProject<?, ?> project : allProjects) {
+        try {
+            Node n = getNode();
+            Computer c = n.toComputer();
 
-                if (project.isDisabled()) { // ignore all disabled projects
-                    continue;
-                }
+            if (!c.isOffline()) {
+                List<AbstractProject> allProjects = Jenkins.getInstance().getAllItems(AbstractProject.class);
+                for (AbstractProject<?, ?> project : allProjects) {
 
-                String projectName = project.getName();
-                Label label = project.getAssignedLabel();
+                    if (project.isDisabled()) { // ignore all disabled projects
+                        continue;
+                    }
 
-                if (label == null) { // project has no label -> so register
-                                     // "build:projectName" on all nodes
-                    String jobFunctionName = "build:" + projectName;
-                    newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
-                            jobFunctionName, StartJobWorker.class.getName(),
-                            project, this.node, this.masterName, worker));
-                } else { // register "build:$projectName:$projectLabel" if this
-                         // node matches a node from the project label
+                    String projectName = project.getName();
+                    Label label = project.getAssignedLabel();
 
-                    Set<Node> projectLabelNodes = label.getNodes();
-                    String projectLabelString = label.getExpression();
-                    Set<String> projectLabels = tokenizeLabelString(
-                        projectLabelString, "\\|\\|");
+                    if (label == null) { // project has no label -> so register
+                                         // "build:projectName" on all nodes
+                        String jobFunctionName = "build:" + projectName;
+                        newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
+                                jobFunctionName, StartJobWorker.class.getName(),
+                                project, n, this.masterName, worker));
+                    } else { // register "build:$projectName:$projectLabel" if this
+                             // node matches a node from the project label
 
-                    // iterate thru all project labels and find matching nodes
-                    for (String projectLabel : projectLabels) {
-                        if (projectLabelNodes.contains(this.node)) {
-                            String jobFunctionName = "build:" + projectName
-                                + ":" + projectLabel;
-                            // register with label (i.e. "build:$projectName:$projectLabel")
-                            newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
-                                    jobFunctionName, StartJobWorker.class.getName(),
-                                    project, this.node, this.masterName, worker));
-                            jobFunctionName = "build:" + projectName;
-                            // also register without label (i.e. "build:$projectName")
-                            newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
-                                    jobFunctionName, StartJobWorker.class.getName(),
-                                    project, this.node, this.masterName, worker));
+                        Set<Node> projectLabelNodes = label.getNodes();
+                        String projectLabelString = label.getExpression();
+                        Set<String> projectLabels = tokenizeLabelString(
+                            projectLabelString, "\\|\\|");
+
+                        // iterate thru all project labels and find matching nodes
+                        for (String projectLabel : projectLabels) {
+                            if (projectLabelNodes.contains(n)) {
+                                String jobFunctionName = "build:" + projectName
+                                    + ":" + projectLabel;
+                                // register with label (i.e. "build:$projectName:$projectLabel")
+                                newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
+                                        jobFunctionName, StartJobWorker.class.getName(),
+                                        project, n, this.masterName, worker));
+                                jobFunctionName = "build:" + projectName;
+                                // also register without label (i.e. "build:$projectName")
+                                newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
+                                        jobFunctionName, StartJobWorker.class.getName(),
+                                        project, n, this.masterName, worker));
+                            }
                         }
                     }
                 }
             }
-        }
-        if (!newFunctionMap.keySet().equals(functionMap.keySet())) {
-            functionMap = newFunctionMap;
-            Set<GearmanFunctionFactory> functionSet = new HashSet<GearmanFunctionFactory>(functionMap.values());
-            updateJobs(functionSet);
+            if (!newFunctionMap.keySet().equals(functionMap.keySet())) {
+                functionMap = newFunctionMap;
+                Set<GearmanFunctionFactory> functionSet = new HashSet<GearmanFunctionFactory>(functionMap.values());
+                updateJobs(functionSet);
+            }
+        } catch (NullPointerException npe) {
+            logger.warn("Failed to register jobs on worker thread: "+getName()+" with worker: "+worker.getWorkerID(), npe);
         }
     }
 
