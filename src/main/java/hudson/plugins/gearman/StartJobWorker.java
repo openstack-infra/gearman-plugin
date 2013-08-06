@@ -25,12 +25,14 @@ import hudson.model.Result;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Cause;
+import hudson.model.Computer;
 import hudson.model.Hudson;
 import hudson.model.Node;
 import hudson.model.Project;
 import hudson.model.Queue;
 import hudson.model.StringParameterValue;
 import hudson.model.queue.QueueTaskFuture;
+import hudson.slaves.OfflineCause;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -91,6 +93,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
        data.put("name", project.getName());
        data.put("number", build.getNumber());
        data.put("manager", masterName);
+       data.put("worker", this.worker.getWorkerID());
 
        String rootUrl = Hudson.getInstance().getRootUrl();
        if (rootUrl != null) {
@@ -132,6 +135,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
         // create new parameter objects to pass to jenkins build
         List<ParameterValue> buildParams = new ArrayList<ParameterValue>();
         String decodedData = null;
+        boolean offlineWhenComplete = false;
         if (this.data != null) {
             // decode the data from the client
             decodedData = new String((byte[]) this.data, "UTF-8");
@@ -143,6 +147,13 @@ public class StartJobWorker extends AbstractGearmanFunction {
             // set build parameters that were passed in from client
             for (Map.Entry<String, String> entry : inParams.entrySet()) {
                 buildParams.add(new StringParameterValue(entry.getKey(), entry.getValue()));
+            }
+            String offline = inParams.get("OFFLINE_NODE_WHEN_COMPLETE");
+            if (offline != null) {
+                if (offline.equals("1") || offline.equals("true") ||
+                    offline.equals("True") || offline.equals("TRUE")) {
+                    offlineWhenComplete = true;
+                }
             }
         }
 
@@ -191,8 +202,6 @@ public class StartJobWorker extends AbstractGearmanFunction {
         Queue.Executable exec = future.getStartCondition().get();
         AbstractBuild<?, ?> currBuild = (AbstractBuild<?, ?>) exec;
 
-        availability.unlock(worker);
-
         long now = new Date().getTime();
         int duration = (int) (now - currBuild.getStartTimeInMillis());
         int estimatedDuration = (int) currBuild.getEstimatedDuration();
@@ -224,6 +233,19 @@ public class StartJobWorker extends AbstractGearmanFunction {
         if (sess != null) {
             sendData(jobData.getBytes());
             sess.driveSessionIO();
+        }
+
+        if (offlineWhenComplete) {
+            Computer computer = node.toComputer();
+            if (computer == null) {
+                logger.error("---- Worker " + this.worker + " has no " +
+                             "computer while trying to take node offline.");
+            } else {
+                logger.info("---- Worker " + this.worker + " setting " +
+                            "node offline.");
+                computer.setTemporarilyOffline(true,
+                    new OfflineCause.ByCLI("Offline due to Gearman request"));
+            }
         }
 
         // check Jenkins build results
