@@ -49,9 +49,8 @@ public class GearmanProxy {
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
     // handles to gearman workers
-    private final List<AbstractWorkerThread> gewtHandles;
-    private final List<AbstractWorkerThread> gmwtHandles;
-    private final List<AvailabilityMonitor> availabilityMonitors;
+    private final List<ExecutorWorkerThread> gewtHandles;
+    private final List<ManagementWorkerThread> gmwtHandles;
     private final String masterName;
 
     // Singleton instance
@@ -64,9 +63,8 @@ public class GearmanProxy {
 
     // constructor
     private GearmanProxy() {
-        gewtHandles = Collections.synchronizedList(new ArrayList<AbstractWorkerThread>());
-        gmwtHandles = Collections.synchronizedList(new ArrayList<AbstractWorkerThread>());
-        availabilityMonitors = Collections.synchronizedList(new ArrayList<AvailabilityMonitor>());
+        gewtHandles = Collections.synchronizedList(new ArrayList<ExecutorWorkerThread>());
+        gmwtHandles = Collections.synchronizedList(new ArrayList<ManagementWorkerThread>());
 
         Computer master = null;
         String hostname = Constants.GEARMAN_DEFAULT_EXECUTOR_NAME;
@@ -90,9 +88,17 @@ public class GearmanProxy {
     }
 
     /*
+     * This method is for unit tests only.
+     */
+    protected void testResetHandles() {
+        gmwtHandles.clear();
+        gewtHandles.clear();
+    }
+
+    /*
      * This method initializes the  gearman workers.
      */
-    public void initWorkers() {
+    public synchronized void initWorkers() {
         /*
          * Purpose here is to create a 1:1 mapping of 'gearman worker':'jenkins
          * executor' then use the gearman worker to execute builds on that
@@ -148,9 +154,13 @@ public class GearmanProxy {
      * Spawn management executor workers. This worker does not need any
      * executors. It only needs to connect to gearman.
      */
-    public void createManagementWorker() {
+    public synchronized void createManagementWorker() {
 
-        AbstractWorkerThread gwt = new ManagementWorkerThread(
+        if (!gmwtHandles.isEmpty()) {
+            return;
+        }
+
+        ManagementWorkerThread gwt = new ManagementWorkerThread(
                 GearmanPluginConfig.get().getHost(),
                 GearmanPluginConfig.get().getPort(),
                 masterName + "_manager",
@@ -159,31 +169,38 @@ public class GearmanProxy {
         gmwtHandles.add(gwt);
 
         logger.info("---- Num of executors running = " + getNumExecutors());
-
     }
 
     /*
      * Spawn workers for each executor on a node.
      */
-    public void createExecutorWorkersOnNode(Computer computer) {
+    public synchronized void createExecutorWorkersOnNode(Computer computer) {
 
-        Node node = computer.getNode();
-        AvailabilityMonitor availability = getAvailabilityMonitor(node);
+        ExecutorWorkerThread workerThread = null;
+        // find the computer in the executor workers list
+        for (ExecutorWorkerThread t : gewtHandles) {
+            if (t.getComputer() == computer) {
+                logger.info("---- Executor thread already running for " + computer.getName());
+                return;
+            }
+        }
+
+        AvailabilityMonitor availability = new NodeAvailabilityMonitor(computer);
 
         int executors = computer.getExecutors().size();
         for (int i = 0; i < executors; i++) {
             String nodeName = null;
 
-            nodeName = GearmanPluginUtil.getRealName(node);
+            nodeName = GearmanPluginUtil.getRealName(computer);
             if (nodeName == "master") {
                 nodeName = masterName;
             }
 
-            AbstractWorkerThread ewt  = new ExecutorWorkerThread(
+            ExecutorWorkerThread ewt  = new ExecutorWorkerThread(
                     GearmanPluginConfig.get().getHost(),
                     GearmanPluginConfig.get().getPort(),
                     nodeName+"_exec-"+Integer.toString(i),
-                    node, masterName, availability);
+                    computer, masterName, availability);
 
             ewt.start();
             gewtHandles.add(ewt);
@@ -196,30 +213,20 @@ public class GearmanProxy {
     /*
      * This method stops all gearman workers
      */
-    public void stopAll() {
+    public synchronized void stopAll() {
         // stop gearman executors
         List<AbstractWorkerThread> stopHandles;
 
-        synchronized (gewtHandles) {
-            stopHandles = new ArrayList<AbstractWorkerThread>(gewtHandles);
-            gewtHandles.clear();
-        }
+        stopHandles = new ArrayList<AbstractWorkerThread>(gewtHandles);
+        gewtHandles.clear();
 
         for (AbstractWorkerThread wt : stopHandles) { // stop executors
             wt.stop();
         }
 
-        synchronized (availabilityMonitors) {
-            // They will be recreated if/when the
-            // ExecutorWorkerThreads are recreated.
-            availabilityMonitors.clear();
-        }
-
         stopHandles = new ArrayList<AbstractWorkerThread>();
-        synchronized (gmwtHandles) {
-            stopHandles = new ArrayList<AbstractWorkerThread>(gmwtHandles);
-            gmwtHandles.clear();
-        }
+        stopHandles = new ArrayList<AbstractWorkerThread>(gmwtHandles);
+        gmwtHandles.clear();
 
         for (AbstractWorkerThread wt : stopHandles) { // stop executors
             wt.stop();
@@ -237,25 +244,21 @@ public class GearmanProxy {
      *      The Computer to stop
      *
      */
-    public void stop(Computer computer) {
-        Node node = computer.getNode();
-        AbstractWorkerThread workerThread = null;
+    public synchronized void stop(Computer computer) {
+        logger.info("---- Stop computer " + computer);
+        List<ExecutorWorkerThread> workers = new ArrayList<ExecutorWorkerThread>();
         // find the computer in the executor workers list and stop it
-        synchronized(gewtHandles) {
-            for (Iterator<AbstractWorkerThread> it = gewtHandles.iterator(); it.hasNext(); ) {
-                AbstractWorkerThread t = it.next();
-                if (t.name.contains(computer.getName())) {
-                    workerThread = t;
-                    it.remove();
-                    break;
-                }
-             }
+        for (Iterator<ExecutorWorkerThread> it = gewtHandles.iterator(); it.hasNext(); ) {
+            ExecutorWorkerThread t = it.next();
+            if (t.getComputer() == computer) {
+                workers.add(t);
+                it.remove();
+            }
         }
 
-        if (workerThread != null) {
-            workerThread.stop();
+        for (ExecutorWorkerThread t : workers) {
+            t.stop();
         }
-        removeAvailabilityMonitor(node);
 
         logger.info("---- Num of executors running = " + getNumExecutors());
     }
@@ -267,83 +270,42 @@ public class GearmanProxy {
         return gmwtHandles.size() + gewtHandles.size();
     }
 
-    /*
-     * This method returns the list of gearman executor workers
-     */
-    public synchronized List<AbstractWorkerThread> getGewtHandles() {
-        return gewtHandles;
-    }
-
-    /*
-     * This method returns the list of gearman management workers
-     */
-    public synchronized List<AbstractWorkerThread> getGmwtHandles() {
-        return gmwtHandles;
-    }
-
-    public void onBuildFinalized(Run r) {
+    public synchronized void onBuildFinalized(Run r) {
         Computer computer = r.getExecutor().getOwner();
         // A build just finished, so let the AvailabilityMonitor
         // associated with its node wake up any workers who may be
         // waiting for the lock.
 
-        synchronized(gewtHandles) {
-            for (Iterator<AbstractWorkerThread> it = gewtHandles.iterator(); it.hasNext(); ) {
-                AbstractWorkerThread t = it.next();
-                if (t.name.contains(computer.getName())) {
-                    t.getAvailability().wake();
-                }
-             }
-        }
-    }
-
-    public AvailabilityMonitor getAvailabilityMonitor(Node node) {
-        AvailabilityMonitor availability;
-
-        synchronized (availabilityMonitors) {
-            for (Iterator<AvailabilityMonitor> it =
-                     availabilityMonitors.iterator(); it.hasNext(); ) {
-                availability = it.next();
-                if (((NodeAvailabilityMonitor)availability).getNode() == node) {
-                    return availability;
-                }
-            }
-            availability = new NodeAvailabilityMonitor(node);
-            availabilityMonitors.add(availability);
-            return availability;
-        }
-    }
-
-    public void removeAvailabilityMonitor(Node node) {
-        AvailabilityMonitor availability;
-
-        synchronized (availabilityMonitors) {
-            for (Iterator<AvailabilityMonitor> it =
-                     availabilityMonitors.iterator(); it.hasNext(); ) {
-                availability = it.next();
-                if (((NodeAvailabilityMonitor)availability).getNode() == node) {
-                    it.remove();
-                }
+        for (ExecutorWorkerThread t : gewtHandles) {
+            if (t.getComputer() == computer) {
+                t.getAvailability().wake();
             }
         }
-
     }
 
-    public CauseOfBlockage canTake(Node node,
-                                   Queue.BuildableItem item) {
+    public synchronized AvailabilityMonitor getAvailabilityMonitor(Computer computer) {
+        for (ExecutorWorkerThread t : gewtHandles) {
+            if (t.getComputer() == computer) {
+                return t.getAvailability();
+            }
+        }
+        return null;
+    }
+
+    public synchronized CauseOfBlockage canTake(Node node,
+                                                Queue.BuildableItem item) {
         // Ask the AvailabilityMonitor for this node if it's okay to
         // run this build.
         ExecutorWorkerThread workerThread = null;
 
-        synchronized(gewtHandles) {
-            for (Iterator<AbstractWorkerThread> it = gewtHandles.iterator(); it.hasNext(); ) {
-                ExecutorWorkerThread t = ((ExecutorWorkerThread)it.next());
-                if (t.getNode() == node) {
-                    workerThread = t;
-                    break;
-                }
-             }
+        Computer computer = node.toComputer();
+        for (ExecutorWorkerThread t : gewtHandles) {
+            if (t.getComputer() == computer) {
+                workerThread = t;
+                break;
+            }
         }
+
         if (workerThread != null) {
             if (workerThread.getAvailability().canTake(item)) {
                 return null;
@@ -352,5 +314,11 @@ public class GearmanProxy {
             }
         }
         return null;
+    }
+
+    public synchronized void registerJobs() {
+        for (ExecutorWorkerThread worker : gewtHandles) {
+            worker.registerJobs();
+        }
     }
 }

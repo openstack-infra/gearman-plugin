@@ -59,7 +59,7 @@ public class ComputerListenerImpl extends ComputerListener {
         // gets called when existing slave dis-connects
         // gets called when slave is deleted.
         logger.info("---- " + ComputerListenerImpl.class.getName() + ":"
-                + " onOffline");
+                + " onOffline computer" + c);
 
         // update functions only when gearman-plugin is enabled
         if (!GearmanPluginConfig.get().enablePlugin()) {
@@ -77,7 +77,7 @@ public class ComputerListenerImpl extends ComputerListener {
         // gets called when existing slave re-connects
         // gets called when new slave goes into online state
         logger.info("---- " + ComputerListenerImpl.class.getName() + ":"
-                + " onOnline");
+                + " onOnline computer " + c);
 
         // update functions only when gearman-plugin is enabled
         if (!GearmanPluginConfig.get().enablePlugin()) {
@@ -89,25 +89,14 @@ public class ComputerListenerImpl extends ComputerListener {
          * the master is not the same as a slave
          */
         GearmanProxy gp = GearmanProxy.getInstance();
-        if (gp.getGmwtHandles().isEmpty()) {
-            /*
-             * Spawn management executor worker if one doesn't exist yet.
-             * This worker does not need any executors. It only needs
-             * to work with gearman.
-             */
-            gp.createManagementWorker();
-
-            // Spawn executors for the jenkins master
-            if (Computer.currentComputer() == c) { //check to see if this is master
-                gp.createExecutorWorkersOnNode(c);
-            }
-        }
+        /*
+         * Spawn management executor worker if one doesn't exist yet.
+         * This worker does not need any executors. It only needs
+         * to work with gearman.
+         */
+        gp.createManagementWorker();
 
         // on creation of new slave
-        if (Computer.currentComputer() != c
-                && !gp.getGewtHandles().contains(c)) {
-
-            gp.createExecutorWorkersOnNode(c);
-        }
+        gp.createExecutorWorkersOnNode(c);
     }
 }

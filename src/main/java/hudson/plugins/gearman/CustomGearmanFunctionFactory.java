@@ -27,7 +27,7 @@
 package hudson.plugins.gearman;
 
 import hudson.model.AbstractProject;
-import hudson.model.Node;
+import hudson.model.Computer;
 import hudson.model.Project;
 
 import java.lang.reflect.Constructor;
@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 public class CustomGearmanFunctionFactory extends DefaultGearmanFunctionFactory {
 
     private final AbstractProject<?,?> project;
-    private final Node node;
+    private final Computer computer;
     private final String theClass;
     private final String masterName;
     private final MyGearmanWorkerImpl worker;
@@ -49,13 +49,13 @@ public class CustomGearmanFunctionFactory extends DefaultGearmanFunctionFactory 
             Constants.GEARMAN_WORKER_LOGGER_NAME);
 
     public CustomGearmanFunctionFactory(String functionName, String className,
-                                        AbstractProject<?,?> project, Node node,
+                                        AbstractProject<?,?> project, Computer computer,
                                         String masterName,
                                         MyGearmanWorkerImpl worker) {
         super(functionName, className);
         this.theClass = className;
         this.project = project;
-        this.node = node;
+        this.computer = computer;
         this.masterName = masterName;
         this.worker = worker;
     }
@@ -63,18 +63,18 @@ public class CustomGearmanFunctionFactory extends DefaultGearmanFunctionFactory 
 
     @Override
     public GearmanFunction getFunction() {
-        return createFunctionInstance(theClass, project, node, masterName,
+        return createFunctionInstance(theClass, project, computer, masterName,
                                       worker);
     }
 
-    private static GearmanFunction createFunctionInstance(String className, AbstractProject<?,?> project, Node node, String masterName, MyGearmanWorkerImpl worker) {
+    private static GearmanFunction createFunctionInstance(String className, AbstractProject<?,?> project, Computer computer, String masterName, MyGearmanWorkerImpl worker) {
 
         GearmanFunction f = null;
         try {
 
             Class<?> c = Class.forName(className);
-            Constructor<?> con = c.getConstructor(new Class[]{AbstractProject.class, Node.class, String.class, MyGearmanWorkerImpl.class});
-            Object o = con.newInstance(new Object[] {project, node, masterName, worker});
+            Constructor<?> con = c.getConstructor(new Class[]{AbstractProject.class, Computer.class, String.class, MyGearmanWorkerImpl.class});
+            Object o = con.newInstance(new Object[] {project, computer, masterName, worker});
 
             if (o instanceof GearmanFunction) {
                 f = (GearmanFunction) o;

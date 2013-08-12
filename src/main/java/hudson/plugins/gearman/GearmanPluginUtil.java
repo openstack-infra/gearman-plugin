@@ -20,7 +20,6 @@ package hudson.plugins.gearman;
 
 import hudson.model.AbstractProject;
 import hudson.model.Computer;
-import hudson.model.Node;
 import hudson.model.Run;
 
 import jenkins.model.Jenkins;
@@ -39,23 +38,23 @@ public class GearmanPluginUtil {
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
     /*
-     * This method returns the real node name.  Master node
+     * This method returns the real computer name.  Master computer
      * by default has an empty string for the name.  But you
      * need to use "master" to tell jenkins to do stuff,
      * namely like schedule a build.
      *
-     * @param Node
-     *      The node to lookup
+     * @param Computer
+     *      The computer to lookup
      *
      * @return
-     *      "master" for the master node or assigned name of the slave node
+     *      "master" for the master computer or assigned name of the slave computer
      */
-    public static String getRealName(Node node) {
+    public static String getRealName(Computer computer) {
 
-        if (Computer.currentComputer() == node.toComputer()) {
+        if (Computer.currentComputer() == computer) {
             return "master";
         } else {
-            return node.getNodeName();
+            return computer.getName();
         }
     }
 

@@ -19,7 +19,6 @@ package hudson.plugins.gearman;
 
 import jenkins.model.Jenkins;
 import hudson.model.Queue;
-import hudson.model.Node;
 import hudson.model.Computer;
 
 import org.slf4j.Logger;
@@ -28,29 +27,27 @@ import org.slf4j.LoggerFactory;
 public class NodeAvailabilityMonitor implements AvailabilityMonitor {
     private final Queue queue;
     private final Jenkins jenkins;
-    private final Node node;
+    private final Computer computer;
     private MyGearmanWorkerImpl workerHoldingLock = null;
     private String expectedUUID = null;
 
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
-    NodeAvailabilityMonitor(Node node)
+    NodeAvailabilityMonitor(Computer computer)
     {
-        this.node = node;
+        this.computer = computer;
         queue = Queue.getInstance();
         jenkins = Jenkins.getInstance();
     }
 
-    public Node getNode() {
-        return node;
+    public Computer getComputer() {
+        return computer;
     }
 
     public void lock(MyGearmanWorkerImpl worker)
         throws InterruptedException
     {
-        Computer computer = node.toComputer();
-
         logger.debug("AvailabilityMonitor lock request: " + worker);
         while (true) {
             boolean busy = false;

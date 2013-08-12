@@ -48,17 +48,17 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
-    private final Node node;
+    private final Computer computer;
     private final String masterName;
 
     private HashMap<String,GearmanFunctionFactory> functionMap;
 
     // constructor
     public ExecutorWorkerThread(String host, int port, String name,
-                                Node node, String masterName,
+                                Computer computer, String masterName,
                                 AvailabilityMonitor availability) {
         super(host, port, name, availability);
-        this.node = node;
+        this.computer = computer;
         this.masterName = masterName;
     }
 
@@ -110,18 +110,18 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
     }
 
     /**
-     * Register gearman functions on this node.  This will unregister all
+     * Register gearman functions on this computer.  This will unregister all
      * functions before registering new functions.  Works for free-style
      * and maven projects but does not work for multi-config projects
      *
      * How functions are registered:
      *  - If the project has no label then we register the project with all
-     *      nodes
+     *      computers
      *
      *      build:pep8 on precise-123
      *      build:pep8 on oneiric-456
      *
-     *  - If the project contains one label then we register with the node
+     *  - If the project contains one label then we register with the computer
      *      that contains the corresponding label. Labels with '&&' is
      *      considered just one label
      *
@@ -131,7 +131,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
      *      build:pep8 on precise-129
      *
      *  - If the project contains multiple labels separated by '||' then
-     *      we register with the nodes that contain the corresponding labels
+     *      we register with the computers that contain the corresponding labels
      *
      *      build:pep8:precise on precise-123
      *      build:pep8 on precise-123
@@ -147,65 +147,60 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
     public void registerJobs() {
         HashMap<String,GearmanFunctionFactory> newFunctionMap = new HashMap<String,GearmanFunctionFactory>();
 
-        try {
-            Node n = getNode();
-            Computer c = n.toComputer();
+        if (!computer.isOffline()) {
+            Node node = computer.getNode();
 
-            if (!c.isOffline()) {
-                List<AbstractProject> allProjects = Jenkins.getInstance().getAllItems(AbstractProject.class);
-                for (AbstractProject<?, ?> project : allProjects) {
+            List<AbstractProject> allProjects = Jenkins.getInstance().getAllItems(AbstractProject.class);
+            for (AbstractProject<?, ?> project : allProjects) {
 
-                    if (project.isDisabled()) { // ignore all disabled projects
-                        continue;
-                    }
+                if (project.isDisabled()) { // ignore all disabled projects
+                    continue;
+                }
 
-                    String projectName = project.getName();
-                    Label label = project.getAssignedLabel();
+                String projectName = project.getName();
+                Label label = project.getAssignedLabel();
 
-                    if (label == null) { // project has no label -> so register
-                                         // "build:projectName" on all nodes
-                        String jobFunctionName = "build:" + projectName;
-                        newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
-                                jobFunctionName, StartJobWorker.class.getName(),
-                                project, n, this.masterName, worker));
-                    } else { // register "build:$projectName:$projectLabel" if this
-                             // node matches a node from the project label
+                if (label == null) { // project has no label -> so register
+                                     // "build:projectName" on all nodes
+                    String jobFunctionName = "build:" + projectName;
+                    newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
+                            jobFunctionName, StartJobWorker.class.getName(),
+                            project, computer, this.masterName, worker));
+                } else { // register "build:$projectName:$projectLabel" if this
+                         // node matches a node from the project label
 
-                        Set<Node> projectLabelNodes = label.getNodes();
-                        String projectLabelString = label.getExpression();
-                        Set<String> projectLabels = tokenizeLabelString(
-                            projectLabelString, "\\|\\|");
+                    Set<Node> projectLabelNodes = label.getNodes();
+                    String projectLabelString = label.getExpression();
+                    Set<String> projectLabels = tokenizeLabelString(
+                        projectLabelString, "\\|\\|");
 
-                        // iterate thru all project labels and find matching nodes
-                        for (String projectLabel : projectLabels) {
-                            if (projectLabelNodes.contains(n)) {
-                                String jobFunctionName = "build:" + projectName
-                                    + ":" + projectLabel;
-                                // register with label (i.e. "build:$projectName:$projectLabel")
-                                newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
-                                        jobFunctionName, StartJobWorker.class.getName(),
-                                        project, n, this.masterName, worker));
-                                jobFunctionName = "build:" + projectName;
-                                // also register without label (i.e. "build:$projectName")
-                                newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
-                                        jobFunctionName, StartJobWorker.class.getName(),
-                                        project, n, this.masterName, worker));
-                            }
+                    // iterate thru all project labels and find matching nodes
+                    for (String projectLabel : projectLabels) {
+                        if (projectLabelNodes.contains(node)) {
+                            String jobFunctionName = "build:" + projectName
+                                + ":" + projectLabel;
+                            // register with label (i.e. "build:$projectName:$projectLabel")
+                            newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
+                                    jobFunctionName, StartJobWorker.class.getName(),
+                                    project, computer, this.masterName, worker));
+                            jobFunctionName = "build:" + projectName;
+                            // also register without label (i.e. "build:$projectName")
+                            newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
+                                    jobFunctionName, StartJobWorker.class.getName(),
+                                    project, computer, this.masterName, worker));
                         }
                     }
                 }
             }
-            if (!newFunctionMap.keySet().equals(functionMap.keySet())) {
-                functionMap = newFunctionMap;
-                Set<GearmanFunctionFactory> functionSet = new HashSet<GearmanFunctionFactory>(functionMap.values());
-                updateJobs(functionSet);
-            }
-        } catch (NullPointerException npe) {
-            logger.warn("Failed to register jobs on worker thread: "+getName()+" with worker: "+worker.getWorkerID(), npe);
+        }
+        if (!newFunctionMap.keySet().equals(functionMap.keySet())) {
+            functionMap = newFunctionMap;
+            Set<GearmanFunctionFactory> functionSet = new HashSet<GearmanFunctionFactory>(functionMap.values());
+            updateJobs(functionSet);
         }
     }
 
-    public synchronized Node getNode() {
-        return node;
+    public synchronized Computer getComputer() {
+        return computer;
     }
 }

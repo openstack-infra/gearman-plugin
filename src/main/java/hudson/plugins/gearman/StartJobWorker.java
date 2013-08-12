@@ -60,8 +60,8 @@ import com.google.gson.reflect.TypeToken;
  * This is a gearman function that will start jenkins builds
  *
  * Assumptions:  When this function is created it has an associated
- *      node and project.  The build will start a jenkins build
- *      on its assigned assigned project and node and pass along
+ *      computer and project.  The build will start a jenkins build
+ *      on its assigned assigned project and computer and pass along
  *      all of the parameters from the client.
  *
  * @author Khai Do
@@ -71,15 +71,15 @@ public class StartJobWorker extends AbstractGearmanFunction {
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
-    Node node;
+    Computer computer;
     AbstractProject<?, ?> project;
     String masterName;
     MyGearmanWorkerImpl worker;
 
-    public StartJobWorker(AbstractProject<?, ?> project, Node node, String masterName,
+    public StartJobWorker(AbstractProject<?, ?> project, Computer computer, String masterName,
                           MyGearmanWorkerImpl worker) {
         this.project = project;
-        this.node = node;
+        this.computer = computer;
         this.masterName = masterName;
         this.worker = worker;
     }
@@ -160,16 +160,16 @@ public class StartJobWorker extends AbstractGearmanFunction {
         /*
          * make this node build this project with unique id and build params from the client
          */
-        String runNodeName = GearmanPluginUtil.getRealName(node);
+        String runNodeName = GearmanPluginUtil.getRealName(computer);
 
-        // create action to run on a specified node
+        // create action to run on a specified computer
         Action runNode = new NodeAssignmentAction(runNodeName);
         // create action for parameters
         Action params = new NodeParametersAction(buildParams, decodedUniqueId);
         Action [] actions = {runNode, params};
 
         AvailabilityMonitor availability =
-            GearmanProxy.getInstance().getAvailabilityMonitor(node);
+            GearmanProxy.getInstance().getAvailabilityMonitor(computer);
 
         availability.expectUUID(decodedUniqueId);
 
@@ -236,7 +236,6 @@ public class StartJobWorker extends AbstractGearmanFunction {
         }
 
         if (offlineWhenComplete) {
-            Computer computer = node.toComputer();
             if (computer == null) {
                 logger.error("---- Worker " + this.worker + " has no " +
                              "computer while trying to take node offline.");

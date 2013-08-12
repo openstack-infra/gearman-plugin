@@ -31,22 +31,21 @@ import org.jvnet.hudson.test.HudsonTestCase;
  */
 public class GearmanPluginUtilTest extends HudsonTestCase {
 
-
     @Test
     public void testGetRealNameSlave() throws Exception {
+        DumbSlave slave = createOnlineSlave();
 
-        DumbSlave slave = createSlave();
-        slave.setNodeName("oneiric-10");
-
+        // createOnlineSlave sets the slave name to slave0. Do not change
+        // this with setNodeName as the name is supposed to be immutable
+        // except when cloning a preexisting slave.
+        assertEquals("slave0", GearmanPluginUtil.getRealName(slave.toComputer()));
         hudson.removeNode(slave);
-
-        assertEquals("oneiric-10", GearmanPluginUtil.getRealName(slave));
     }
 
     @Test
     public void testGetRealNameMaster() throws Exception {
 
-        assertEquals("master", GearmanPluginUtil.getRealName(Computer.currentComputer().getNode()));
+        assertEquals("master", GearmanPluginUtil.getRealName(Computer.currentComputer()));
     }
 
 }

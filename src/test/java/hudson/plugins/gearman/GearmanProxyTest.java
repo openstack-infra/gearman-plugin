@@ -44,43 +44,20 @@ public class GearmanProxyTest extends HudsonTestCase {
     @Override
     @After
     public void tearDown() throws Exception {
-        gp.getGmwtHandles().clear();
-        gp.getGewtHandles().clear();
+        gp.testResetHandles();
         super.tearDown();
-    }
-
-    @Test
-    public void testGetNumExecutors() throws Exception {
-
-        DumbSlave slave = createSlave();
-
-        assertEquals(0, gp.getNumExecutors());
-
-        gp.getGewtHandles().add(new ExecutorWorkerThread("localhost", 4730, "test_exec-0", slave, "master",
-                                                         new NoopAvailabilityMonitor()));
-        gp.getGewtHandles().add(new ExecutorWorkerThread("localhost", 4730, "test_exec-1", slave, "master",
-                                                         new NoopAvailabilityMonitor()));
-        gp.getGewtHandles().add(new ExecutorWorkerThread("localhost", 4730, "test_exec-2", slave, "master",
-                                                         new NoopAvailabilityMonitor()));
-
-        assertEquals(3, gp.getNumExecutors());
-
-        gp.getGewtHandles().add(new ManagementWorkerThread("localhost", 4730,
-                                                           "master_manage", "master",
-                                                           new NoopAvailabilityMonitor()));
-
-        assertEquals(4, gp.getNumExecutors());
     }
 
     @Test
     public void testCreateManagementWorker() {
 
-        assertEquals(0, gp.getGmwtHandles().size());
+        assertEquals(0, gp.getNumExecutors());
 
         gp.createManagementWorker();
 
-        assertEquals(1, gp.getGmwtHandles().size());
-        assertTrue(gp.getGmwtHandles().get(0).isAlive());
+        // mgmt: 1 master
+        assertEquals(1, gp.getNumExecutors());
+        //        assertTrue(gp.getGmwtHandles().get(0).isAlive());
     }
 
     @Test
@@ -88,10 +65,12 @@ public class GearmanProxyTest extends HudsonTestCase {
 
         DumbSlave slave = createSlave();
 
-        assertEquals(0, gp.getGewtHandles().size());
+        assertEquals(0, gp.getNumExecutors());
 
         gp.createExecutorWorkersOnNode(slave.toComputer());
-        assertEquals(1, gp.getGewtHandles().size());
+
+        // exec: 1 master
+        assertEquals(1, gp.getNumExecutors());
     }
 
     @Test
@@ -99,7 +78,8 @@ public class GearmanProxyTest extends HudsonTestCase {
 
         gp.initWorkers();
 
-        assertEquals(2, gp.getGewtHandles().size());
+        // exec: 1 slave, 1 master + mgmnt: 1
+        assertEquals(3, gp.getNumExecutors());
     }
 
     @Test
@@ -108,6 +88,7 @@ public class GearmanProxyTest extends HudsonTestCase {
         DumbSlave slave = createSlave();
         gp.initWorkers();
 
-        assertEquals(3, gp.getGewtHandles().size());
+        // exec: 2 slaves, 1 master + mgmnt: 1
+        assertEquals(4, gp.getNumExecutors());
     }
 }

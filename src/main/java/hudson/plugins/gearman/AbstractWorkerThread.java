@@ -124,16 +124,16 @@ public abstract class AbstractWorkerThread implements Runnable {
     public void stop() {
         running = false;
 
-        logger.info("=== " + getName() + " Request to stop AWT: " + this);
-        logger.info("=== " + getName() + "   Thread: " + thread + " name: " + thread.getName());
-        logger.info("=== " + getName() + "   Worker: " + worker);
+        logger.info("---- " + getName() + " Request to stop AWT: " + this);
+        logger.info("---- " + getName() + "   Thread: " + thread + " name: " + thread.getName());
+        logger.info("---- " + getName() + "   Worker: " + worker);
         worker.stop();
 
-        logger.info("=== " + getName() + "   Interrupting worker");
+        logger.info("---- " + getName() + "   Interrupting worker");
         // Interrupt the thread so it unblocks any blocking call
         thread.interrupt();
 
-        logger.info("=== " + getName() + "   Joining thread");
+        logger.info("---- " + getName() + "   Joining thread");
         // Wait until the thread exits
         try {
             thread.join();
@@ -141,7 +141,7 @@ public abstract class AbstractWorkerThread implements Runnable {
             // Unexpected interruption
             logger.error("Exception while waiting for thread to join", e);
         }
-        logger.info("=== " + getName() + " Stop request done");
+        logger.info("---- " + getName() + " Stop request done");
     }
 
     /*
