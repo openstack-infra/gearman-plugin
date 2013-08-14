@@ -145,6 +145,11 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
      */
     @Override
     public void registerJobs() {
+        if (worker == null) {
+            // We haven't been initialized yet; the run method will call this again
+            return;
+        }
+
         HashMap<String,GearmanFunctionFactory> newFunctionMap = new HashMap<String,GearmanFunctionFactory>();
 
         if (!computer.isOffline()) {

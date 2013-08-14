@@ -54,12 +54,21 @@ public abstract class AbstractWorkerThread implements Runnable {
         setPort(port);
         setName(name);
         setAvailability(availability);
-        initWorker();
     }
 
     protected void initWorker() {
-        worker = new MyGearmanWorkerImpl(getAvailability());
-        conn = new GearmanNIOJobServerConnection(host, port);
+        synchronized(this) {
+            if (running) {
+                worker = new MyGearmanWorkerImpl(getAvailability());
+                conn = new GearmanNIOJobServerConnection(host, port);
+            }
+        }
+    }
+
+    // Only for unit tests:
+    protected void testInitWorker() {
+        running = true;
+        initWorker();
     }
 
     public String getHost() {
@@ -122,12 +131,16 @@ public abstract class AbstractWorkerThread implements Runnable {
      * Stop the thread
      */
     public void stop() {
-        running = false;
 
         logger.info("---- " + getName() + " Request to stop AWT: " + this);
         logger.info("---- " + getName() + "   Thread: " + thread + " name: " + thread.getName());
         logger.info("---- " + getName() + "   Worker: " + worker);
-        worker.stop();
+        synchronized(this) {
+            running = false;
+            if (worker != null) {
+                worker.stop();
+            }
+        }
 
         logger.info("---- " + getName() + "   Interrupting worker");
         // Interrupt the thread so it unblocks any blocking call
@@ -150,7 +163,7 @@ public abstract class AbstractWorkerThread implements Runnable {
      */
     @Override
     public void run() {
-
+        initWorker();
         while (running) {
             try {
                 logger.info("---- Starting Worker "+ getName() +" ("+new Date().toString()+")");

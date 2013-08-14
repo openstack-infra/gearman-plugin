@@ -55,6 +55,11 @@ public class ManagementWorkerThread extends AbstractWorkerThread{
      */
     @Override
     public void registerJobs(){
+        if (worker == null) {
+            // We haven't been initialized yet; the run method will call this again
+            return;
+        }
+
         if (!registered) {
             Set<GearmanFunctionFactory> functionSet = new HashSet<GearmanFunctionFactory>();
 

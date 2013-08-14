@@ -58,6 +58,7 @@ public class ManagementWorkerThreadTest {
     public void testRegisterJobs() {
         AbstractWorkerThread manager = new ManagementWorkerThread("GearmanServer", 4730,
                                                                   "master_manager", "master", new NoopAvailabilityMonitor());
+        manager.testInitWorker();
         manager.registerJobs();
         Set<String> functions = manager.worker.getRegisteredFunctions();
         assertEquals("set_description:master", functions.toArray()[0]);

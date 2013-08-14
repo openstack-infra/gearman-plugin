@@ -79,6 +79,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         apple.setAssignedLabel(new LabelAtom("oneiric-10"));
 
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave.toComputer(), "master", new NoopAvailabilityMonitor());
+        oneiric.testInitWorker();
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -99,6 +100,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         lemon.setAssignedLabel(new LabelAtom("linux"));
 
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave.toComputer(), "master", new NoopAvailabilityMonitor());
+        oneiric.testInitWorker();
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -119,6 +121,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         lemon.setAssignedLabel(new LabelAtom("bogus"));
 
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave.toComputer(), "master", new NoopAvailabilityMonitor());
+        oneiric.testInitWorker();
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -136,6 +139,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         Project<?, ?> lemon = createFreeStyleProject("lemon");
 
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave.toComputer(), "master", new NoopAvailabilityMonitor());
+        oneiric.testInitWorker();
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -156,6 +160,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         lemon.disable();
 
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave.toComputer(), "master", new NoopAvailabilityMonitor());
+        oneiric.testInitWorker();
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -177,6 +182,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         lemon.setAssignedLabel(new LabelAtom("linux"));
 
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", offlineSlave.toComputer(), "master", new NoopAvailabilityMonitor());
+        oneiric.testInitWorker();
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -195,6 +201,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         lemon.setAssignedLabel(new LabelAtom("linux"));
 
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave.toComputer(), "master", new NoopAvailabilityMonitor());
+        oneiric.testInitWorker();
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
@@ -216,6 +223,7 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
         lemon.setAssignedLabel(new LabelAtom("!linux"));
 
         AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave.toComputer(), "master", new NoopAvailabilityMonitor());
+        oneiric.testInitWorker();
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
