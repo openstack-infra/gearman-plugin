@@ -27,21 +27,16 @@ import hudson.model.AbstractProject;
 import hudson.model.Cause;
 import hudson.model.Computer;
 import hudson.model.Hudson;
-import hudson.model.Node;
-import hudson.model.Project;
 import hudson.model.Queue;
 import hudson.model.StringParameterValue;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.slaves.OfflineCause;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -201,6 +196,11 @@ public class StartJobWorker extends AbstractGearmanFunction {
         // wait for start of build
         Queue.Executable exec = future.getStartCondition().get();
         AbstractBuild<?, ?> currBuild = (AbstractBuild<?, ?>) exec;
+
+        if (!offlineWhenComplete) {
+          // Unlock the monitor for this worker
+          availability.unlock(worker);
+        }
 
         long now = new Date().getTime();
         int duration = (int) (now - currBuild.getStartTimeInMillis());
