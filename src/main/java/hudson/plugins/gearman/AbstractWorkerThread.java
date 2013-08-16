@@ -146,14 +146,6 @@ public abstract class AbstractWorkerThread implements Runnable {
         // Interrupt the thread so it unblocks any blocking call
         thread.interrupt();
 
-        logger.info("---- " + getName() + "   Joining thread");
-        // Wait until the thread exits
-        try {
-            thread.join();
-        } catch (InterruptedException e) {
-            // Unexpected interruption
-            logger.error("Exception while waiting for thread to join", e);
-        }
         logger.info("---- " + getName() + " Stop request done");
     }
 
