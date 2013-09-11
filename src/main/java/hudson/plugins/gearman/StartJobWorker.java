@@ -178,65 +178,68 @@ public class StartJobWorker extends AbstractGearmanFunction {
         // check build and pass results back to client
         String jobData;
 
-        // This is a hack that relies on implementation knowledge.  In
-        // order to actually send a WORK_STATUS packet before the
-        // completion of work, we need to directly drive the session
-        // IO, which requires a session object.  We happen to know
-        // that's what our event listener is.
-        GearmanJobServerSession sess = null;
+        try {
+            // This is a hack that relies on implementation knowledge.  In
+            // order to actually send a WORK_STATUS packet before the
+            // completion of work, we need to directly drive the session
+            // IO, which requires a session object.  We happen to know
+            // that's what our event listener is.
+            GearmanJobServerSession sess = null;
 
-        for (GearmanIOEventListener listener : listeners) {
-            if (listener instanceof GearmanJobServerSession) {
-                sess = (GearmanJobServerSession)listener;
-            }
-        }
-
-        // wait for start of build
-        Queue.Executable exec = future.getStartCondition().get();
-        AbstractBuild<?, ?> currBuild = (AbstractBuild<?, ?>) exec;
-
-        if (!offlineWhenComplete) {
-          // Unlock the monitor for this worker
-          availability.unlock(worker);
-        }
-
-        long now = new Date().getTime();
-        int duration = (int) (now - currBuild.getStartTimeInMillis());
-        int estimatedDuration = (int) currBuild.getEstimatedDuration();
-        jobData = buildStatusData(currBuild);
-
-        sendData(jobData.getBytes());
-        sess.driveSessionIO();
-        sendStatus(estimatedDuration, duration);
-        sess.driveSessionIO();
-
-        while (!future.isDone()) {
-            // wait for jenkins build to complete
-            try {
-                future.get(10, TimeUnit.SECONDS);
-            } catch (TimeoutException e) {
-                now = new Date().getTime();
-                duration = (int) (now - currBuild.getStartTimeInMillis());
-                estimatedDuration = (int) currBuild.getEstimatedDuration();
-                if (sess != null) {
-                    sendStatus(estimatedDuration, duration);
-                    sess.driveSessionIO();
+            for (GearmanIOEventListener listener : listeners) {
+                if (listener instanceof GearmanJobServerSession) {
+                    sess = (GearmanJobServerSession)listener;
                 }
             }
-        }
 
-        exec = future.get();
-        jobData = buildStatusData(currBuild);
+            // wait for start of build
+            Queue.Executable exec = future.getStartCondition().get();
+            AbstractBuild<?, ?> currBuild = (AbstractBuild<?, ?>) exec;
 
-        if (offlineWhenComplete) {
-            if (computer == null) {
-                logger.error("---- Worker " + this.worker + " has no " +
-                             "computer while trying to take node offline.");
-            } else {
-                logger.info("---- Worker " + this.worker + " setting " +
-                            "node offline.");
-                computer.setTemporarilyOffline(true,
-                    new OfflineCause.ByCLI("Offline due to Gearman request"));
+            if (!offlineWhenComplete) {
+                // Unlock the monitor for this worker
+                availability.unlock(worker);
+            }
+
+            long now = new Date().getTime();
+            int duration = (int) (now - currBuild.getStartTimeInMillis());
+            int estimatedDuration = (int) currBuild.getEstimatedDuration();
+            jobData = buildStatusData(currBuild);
+
+            sendData(jobData.getBytes());
+            sess.driveSessionIO();
+            sendStatus(estimatedDuration, duration);
+            sess.driveSessionIO();
+
+            while (!future.isDone()) {
+                // wait for jenkins build to complete
+                try {
+                    future.get(10, TimeUnit.SECONDS);
+                } catch (TimeoutException e) {
+                    now = new Date().getTime();
+                    duration = (int) (now - currBuild.getStartTimeInMillis());
+                    estimatedDuration = (int) currBuild.getEstimatedDuration();
+                    if (sess != null) {
+                        sendStatus(estimatedDuration, duration);
+                        sess.driveSessionIO();
+                    }
+                }
+            }
+
+            exec = future.get();
+            jobData = buildStatusData(currBuild);
+
+        } finally {
+            if (offlineWhenComplete) {
+                if (computer == null) {
+                    logger.error("---- Worker " + this.worker + " has no " +
+                                 "computer while trying to take node offline.");
+                } else {
+                    logger.info("---- Worker " + this.worker + " setting " +
+                                "node offline.");
+                    computer.setTemporarilyOffline(true,
+                        new OfflineCause.ByCLI("Offline due to Gearman request"));
+                }
             }
         }
 
