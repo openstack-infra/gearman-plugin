@@ -176,8 +176,6 @@ public class StartJobWorker extends AbstractGearmanFunction {
         QueueTaskFuture<?> future = project.scheduleBuild2(0, new Cause.UserIdCause(), actions);
 
         // check build and pass results back to client
-        boolean jobResult = true;
-        String jobFailureMsg = "";
         String jobData;
 
         // This is a hack that relies on implementation knowledge.  In
@@ -228,12 +226,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
         }
 
         exec = future.get();
-
         jobData = buildStatusData(currBuild);
-        if (sess != null) {
-            sendData(jobData.getBytes());
-            sess.driveSessionIO();
-        }
 
         if (offlineWhenComplete) {
             if (computer == null) {
@@ -247,19 +240,11 @@ public class StartJobWorker extends AbstractGearmanFunction {
             }
         }
 
-        // check Jenkins build results
-        Result result = currBuild.getResult();
-        if (result == Result.SUCCESS) {
-            jobResult = true;
-        } else {
-            jobResult = false;
-        }
-
         // return result to client
         GearmanJobResult gjr = new GearmanJobResultImpl(
-                this.jobHandle, jobResult,
-                "".getBytes(), "".getBytes(),
-                jobFailureMsg.getBytes(), 0, 0);
+                this.jobHandle, true,
+                jobData.getBytes(), "".getBytes(),
+                "".getBytes(), 0, 0);
         return gjr;
     }
 }
