@@ -19,6 +19,7 @@
 package hudson.plugins.gearman;
 
 import hudson.maven.MavenModuleSet;
+import hudson.model.Node.Mode;
 import hudson.model.Project;
 import hudson.model.labels.LabelAtom;
 import hudson.slaves.DumbSlave;
@@ -130,22 +131,54 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
     }
 
     /*
-     * This test verifies that gearman functions correctly registered for a
-     * project that contains no labels
+     * This test verifies that gearman functions get correctly registered for a
+     * project has no labels and slave is set to normal mode (i.e. 'Utilize this
+     * slave as much as possible')
      */
     @Test
     public void testRegisterJobs_ProjectNoLabel() throws Exception {
 
         Project<?, ?> lemon = createFreeStyleProject("lemon");
 
-        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave.toComputer(), "master", new NoopAvailabilityMonitor());
+        AbstractWorkerThread oneiric = new ExecutorWorkerThread(
+                                            "GearmanServer",
+                                            4730,
+                                            "MyWorker",
+                                            slave.toComputer(),
+                                            "master",
+                                            new NoopAvailabilityMonitor());
         oneiric.testInitWorker();
         oneiric.registerJobs();
         Set<String> functions = oneiric.worker.getRegisteredFunctions();
 
         assertEquals(1, functions.size());
         assertTrue(functions.contains("build:lemon"));
+    }
 
+    /*
+     * This test verifies that a gearman function does not get registered for
+     * a project that has no label and slave is set to exclusive mode
+     * (i.e. 'leave this machine for tied jobs only')
+     */
+    @Test
+    public void testRegisterJobs_ProjectNoLabel_Exclusive() throws Exception {
+
+        Project<?, ?> lemon = createFreeStyleProject("lemon");
+        DumbSlave exclusive_slave = createOnlineSlave(new LabelAtom("foo"));
+        exclusive_slave.setMode(Mode.EXCLUSIVE);
+
+        AbstractWorkerThread oneiric = new ExecutorWorkerThread(
+                                            "GearmanServer",
+                                            4730,
+                                            "MyWorker",
+                                            exclusive_slave.toComputer(),
+                                            "master",
+                                            new NoopAvailabilityMonitor());
+        oneiric.testInitWorker();
+        oneiric.registerJobs();
+        Set<String> functions = oneiric.worker.getRegisteredFunctions();
+
+        assertEquals(0, functions.size());
     }
 
     /*
@@ -229,4 +262,5 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
 
         assertEquals(0, functions.size());
     }
+
 }

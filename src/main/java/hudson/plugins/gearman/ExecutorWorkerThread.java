@@ -22,6 +22,7 @@ import hudson.model.AbstractProject;
 import hudson.model.Computer;
 import hudson.model.Label;
 import hudson.model.Node;
+import hudson.model.Node.Mode;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -166,11 +167,13 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
                 Label label = project.getAssignedLabel();
 
                 if (label == null) { // project has no label -> so register
-                                     // "build:projectName" on all nodes
-                    String jobFunctionName = "build:" + projectName;
-                    newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
+                                     // "build:projectName" on all non exclusive nodes
+                    if (node.getMode() != Mode.EXCLUSIVE) {
+                        String jobFunctionName = "build:" + projectName;
+                        newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
                             jobFunctionName, StartJobWorker.class.getName(),
                             project, computer, this.masterName, worker));
+                    }
                 } else { // register "build:$projectName:$projectLabel" if this
                          // node matches a node from the project label
 
