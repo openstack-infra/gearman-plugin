@@ -21,6 +21,7 @@ package hudson.plugins.gearman;
 import hudson.model.AbstractProject;
 import hudson.model.Computer;
 import hudson.model.Label;
+import hudson.model.labels.LabelAtom;
 import hudson.model.Node;
 import hudson.model.Node.Mode;
 
@@ -68,46 +69,6 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
         availability.unlock(worker);
         super.initWorker();
         this.functionMap = new HashMap<String,GearmanFunctionFactory>();
-    }
-
-    /**
-     * This function tokenizes the labels in a label string
-     * that is set in the jenkins projects
-     *
-     * @param label
-     *      The label string.
-     * @param pattern
-     *      The pattern for tokenizing the label.
-     * @return
-     *      A list of labels, the list can be empty
-     */
-    private Set<String> tokenizeLabelString(String label, String pattern) {
-
-        Set<String> labelSet = new HashSet<String>();
-
-        if (pattern == null) {
-            return labelSet;
-        }
-
-        if (pattern.isEmpty()) {
-            return labelSet;
-        }
-
-        if (label != null) {
-
-            Scanner slabel = new Scanner(label);
-            try {
-                slabel.useDelimiter(pattern);
-                while (slabel.hasNext()) {
-                    String newLabel = slabel.next();
-                    labelSet.add(newLabel);
-
-                }
-            } finally {
-                slabel.close();
-            }
-        }
-        return labelSet;
     }
 
     /**
@@ -174,25 +135,29 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
                             jobFunctionName, StartJobWorker.class.getName(),
                             project, computer, this.masterName, worker));
                     }
-                } else { // register "build:$projectName:$projectLabel" if this
+                } else { // register "build:$projectName:$label" if this
                          // node matches a node from the project label
 
                     Set<Node> projectLabelNodes = label.getNodes();
-                    String projectLabelString = label.getExpression();
-                    Set<String> projectLabels = tokenizeLabelString(
-                        projectLabelString, "\\|\\|");
+                    Set<LabelAtom> projectLabelAtoms = label.listAtoms();
+                    Set<LabelAtom> nodeLabelAtoms = node.getAssignedLabels();
+                    // Get the intersection of label atoms for the project and the current node
+                    Set<LabelAtom> nodeProjectLabelAtoms = new HashSet<LabelAtom>(projectLabelAtoms);
+                    nodeProjectLabelAtoms.retainAll(nodeLabelAtoms);
 
-                    // iterate thru all project labels and find matching nodes
-                    for (String projectLabel : projectLabels) {
-                        if (projectLabelNodes.contains(node)) {
-                            String jobFunctionName = "build:" + projectName
-                                + ":" + projectLabel;
-                            // register with label (i.e. "build:$projectName:$projectLabel")
-                            newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
-                                    jobFunctionName, StartJobWorker.class.getName(),
-                                    project, computer, this.masterName, worker));
-                            jobFunctionName = "build:" + projectName;
-                            // also register without label (i.e. "build:$projectName")
+                    // Register functions iff the current node is in
+                    // the list of nodes for the project's label
+                    if (projectLabelNodes.contains(node)) {
+                        String jobFunctionName = "build:" + projectName;
+                        // register without label (i.e. "build:$projectName")
+                        newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
+                                jobFunctionName, StartJobWorker.class.getName(),
+                                project, computer, this.masterName, worker));
+                        // iterate over the intersection of project and node labels
+                        for (LabelAtom labelAtom : nodeProjectLabelAtoms) {
+                            jobFunctionName = "build:" + projectName
+                                + ":" + labelAtom.getDisplayName();
+                            // register with label (i.e. "build:$projectName:$label")
                             newFunctionMap.put(jobFunctionName, new CustomGearmanFunctionFactory(
                                     jobFunctionName, StartJobWorker.class.getName(),
                                     project, computer, this.masterName, worker));
