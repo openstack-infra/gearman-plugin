@@ -28,7 +28,7 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>1.502</version><!-- which version of Jenkins is this plugin built against? -->
+        <version>1.565.3</version><!-- which version of Jenkins is this plugin built against? -->
     </parent>
 
     <artifactId>gearman-plugin</artifactId>
@@ -228,9 +228,7 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven-surefire-plugin.version}</version>
                     <configuration>
-                        <parallel>methods</parallel>
                         <testFailureIgnore>true</testFailureIgnore>
-                        <threadCount>4</threadCount>
                     </configuration>
                 </plugin>
             </plugins>

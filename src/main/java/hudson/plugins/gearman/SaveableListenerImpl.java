@@ -22,18 +22,16 @@ import hudson.Extension;
 import hudson.XmlFile;
 import hudson.model.Saveable;
 import hudson.model.AbstractProject;
-import hudson.model.Node;
 import hudson.model.listeners.SaveableListener;
-
-import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Using the SaveableListener is required as a work around because
- * updating gearman function in ComputerListener.onConfigurationChange
- * doesn't work.
+ * the itemListener.onUpdate event does not fire on changes to
+ * project updates using the Jenkins REST API
+ * Bug: https://issues.jenkins-ci.org/browse/JENKINS-25175
  */
 @Extension
 public class SaveableListenerImpl extends SaveableListener {
@@ -41,22 +39,19 @@ public class SaveableListenerImpl extends SaveableListener {
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
-    /*
-     * TODO:  this works, but is NOT GOOD!
-     *  This listener fires for every change to an object.  So if you
-     *  have 3 nodes in Jenkins it will fire 3 times even though
-     *  the change was only applied to one of the nodes.
-     *
-     */
     @Override
+    // This works but is NOT good because this event is a catch all
+    // for just about any change that happens in Jenkins. This event
+    // also doesn't provide much detail on what has changed.
     public void onChange(Saveable o, XmlFile file) {
         // update functions only when gearman-plugin is enabled
         if (!GearmanPluginConfig.get().enablePlugin()) {
             return;
         }
 
-        // update for when any changes are applied to a project or node
-        if (o instanceof Node || o instanceof AbstractProject) {
+        // only look for changes to projects, specifically for project
+        // label changes.  Node changes are handled in ComputerListenerImpl
+        if (o instanceof AbstractProject) {
             GearmanProxy.getInstance().registerJobs();
         }
     }

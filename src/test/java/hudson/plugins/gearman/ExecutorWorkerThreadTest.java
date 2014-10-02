@@ -70,28 +70,6 @@ public class ExecutorWorkerThreadTest extends HudsonTestCase {
 
     /*
      * This test verifies that gearman functions are correctly registered for a
-     * project that contains a label matching a slave node's self label
-     */
-    @Test
-    public void testRegisterJobs_NodeSelfLabel() throws Exception {
-
-
-        Project<?, ?> apple = createFreeStyleProject("apple");
-        apple.setAssignedLabel(new LabelAtom("oneiric-10"));
-
-        AbstractWorkerThread oneiric = new ExecutorWorkerThread("GearmanServer", 4730, "MyWorker", slave.toComputer(), "master", new NoopAvailabilityMonitor());
-        oneiric.testInitWorker();
-        oneiric.registerJobs();
-        Set<String> functions = oneiric.worker.getRegisteredFunctions();
-
-        assertEquals(2, functions.size());
-        assertTrue(functions.contains("build:apple"));
-        assertTrue(functions.contains("build:apple:oneiric-10"));
-
-    }
-
-    /*
-     * This test verifies that gearman functions are correctly registered for a
      * project that contains a single label matching a label on the slave node
      */
     @Test

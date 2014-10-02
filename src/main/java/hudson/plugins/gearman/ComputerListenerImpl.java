@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2013 Hewlett-Packard Development Company, L.P.
+ * Copyright 2014 Hewlett-Packard Development Company, L.P.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import hudson.Extension;
 import hudson.model.TaskListener;
 import hudson.model.Computer;
 import hudson.slaves.ComputerListener;
+import hudson.slaves.OfflineCause;
 
 import java.io.IOException;
 
@@ -28,7 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Update gearman workers when node changes
+ * Update gearman workers on node state and configuration changes
  */
 @Extension
 public class ComputerListenerImpl extends ComputerListener {
@@ -36,12 +37,10 @@ public class ComputerListenerImpl extends ComputerListener {
     private static final Logger logger = LoggerFactory
             .getLogger(Constants.PLUGIN_LOGGER_NAME);
 
-
     @Override
     public void onConfigurationChange() {
-        // Bug: Configuration save occurs after this function is called
-        // gets called on any configuration change
-        // includes new slave and delete slave
+        // only fired on nodes configuration changes like a label or
+        // name change. Not fired on state changes, like offline or online.
         logger.info("---- " + ComputerListenerImpl.class.getName() + ":"
                 + " onConfigurationChange");
 
@@ -49,6 +48,10 @@ public class ComputerListenerImpl extends ComputerListener {
         if (!GearmanPluginConfig.get().enablePlugin()) {
             return;
         }
+
+        // re-register gearman functions on node configuration changes,
+        // specifically node label changes
+        GearmanProxy.getInstance().registerJobs();
 
         // TODO: adjust for an update to executors. Method does not provide the
         // computer to know which thread to remove or add
@@ -84,10 +87,6 @@ public class ComputerListenerImpl extends ComputerListener {
             return;
         }
 
-        /*
-         * Need to treat the master differently than slaves because
-         * the master is not the same as a slave
-         */
         GearmanProxy gp = GearmanProxy.getInstance();
         /*
          * Spawn management executor worker if one doesn't exist yet.
@@ -99,4 +98,41 @@ public class ComputerListenerImpl extends ComputerListener {
         // on creation of new slave
         gp.createExecutorWorkersOnNode(c);
     }
+
+    @Override
+    public void onTemporarilyOffline(Computer c, OfflineCause cause) {
+        // fired when master or slave goes into temporary offline state
+        logger.info("---- " + ComputerListenerImpl.class.getName() + ":"
+                + " onTemporarilyOffline computer " + c);
+        // update functions only when gearman-plugin is enabled
+        if (!GearmanPluginConfig.get().enablePlugin()) {
+            return;
+        }
+
+        // stop worker when jenkins slave is set to offline
+        GearmanProxy.getInstance().stop(c);
+    }
+
+    @Override
+    public void onTemporarilyOnline(Computer c) {
+        // fired when master or slave goes into temporary online state
+        logger.info("---- " + ComputerListenerImpl.class.getName() + ":"
+                + " onTemporarilyOnline computer " + c);
+        // update functions only when gearman-plugin is enabled
+        if (!GearmanPluginConfig.get().enablePlugin()) {
+            return;
+        }
+
+        GearmanProxy gp = GearmanProxy.getInstance();
+        /*
+         * Spawn management executor worker if one doesn't exist yet.
+         * This worker does not need any executors. It only needs
+         * to work with gearman.
+         */
+        gp.createManagementWorker();
+
+        // on brining a slave back online
+        gp.createExecutorWorkersOnNode(c);
+    }
+
 }
