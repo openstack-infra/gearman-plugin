@@ -109,8 +109,8 @@ public class ComputerListenerImpl extends ComputerListener {
             return;
         }
 
-        // stop worker when jenkins slave is set to offline
-        GearmanProxy.getInstance().stop(c);
+        // re-register gearman functions on node status change,
+        GearmanProxy.getInstance().registerJobs();
     }
 
     @Override
@@ -123,16 +123,8 @@ public class ComputerListenerImpl extends ComputerListener {
             return;
         }
 
-        GearmanProxy gp = GearmanProxy.getInstance();
-        /*
-         * Spawn management executor worker if one doesn't exist yet.
-         * This worker does not need any executors. It only needs
-         * to work with gearman.
-         */
-        gp.createManagementWorker();
-
-        // on brining a slave back online
-        gp.createExecutorWorkersOnNode(c);
+        // re-register gearman functions on node status change,
+        GearmanProxy.getInstance().registerJobs();
     }
 
 }
