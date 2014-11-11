@@ -21,15 +21,15 @@ Pull requests submitted through GitHub will be ignored.
 
 Project site:
 
- * https://launchpad.net/gearman-plugin
+ * https://wiki.jenkins-ci.org/display/JENKINS/Gearman+Plugin
 
 Patches are submitted via Gerrit at:
 
  * https://review.openstack.org/
 
-Bugs should be filed on Launchpad, not GitHub:
+Bugs should be filed on StoryBoard, not GitHub:
 
-   https://bugs.launchpad.net/gearman-plugin
+   https://storyboard.openstack.org/#!/project/706
 
 Cloning:
 
