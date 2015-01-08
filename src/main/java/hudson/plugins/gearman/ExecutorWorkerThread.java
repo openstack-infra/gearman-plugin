@@ -107,7 +107,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
      */
     @Override
     public void registerJobs() {
-        if (worker == null) {
+        if (worker == null || functionMap == null) {
             // We haven't been initialized yet; the run method will call this again
             return;
         }
