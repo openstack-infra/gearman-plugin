@@ -211,21 +211,6 @@ public class StartJobWorker extends AbstractGearmanFunction {
             sendStatus(estimatedDuration, duration);
             sess.driveSessionIO();
 
-            while (!future.isDone()) {
-                // wait for jenkins build to complete
-                try {
-                    future.get(10, TimeUnit.SECONDS);
-                } catch (TimeoutException e) {
-                    now = new Date().getTime();
-                    duration = (int) (now - currBuild.getStartTimeInMillis());
-                    estimatedDuration = (int) currBuild.getEstimatedDuration();
-                    if (sess != null) {
-                        sendStatus(estimatedDuration, duration);
-                        sess.driveSessionIO();
-                    }
-                }
-            }
-
             exec = future.get();
             jobData = buildStatusData(currBuild);
 
