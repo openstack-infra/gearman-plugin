@@ -572,6 +572,7 @@ public class MyGearmanWorkerImpl implements GearmanSessionEventHandler {
                     new GearmanPacketImpl(GearmanPacketMagic.REQ,
                     GearmanPacketType.WORK_FAIL, handle));
             session.submitTask(gsr);
+            availability.unlock(this);
             enqueueNoopEvent();
         } else {
             GearmanFunction function = def.getFactory().getFunction();
