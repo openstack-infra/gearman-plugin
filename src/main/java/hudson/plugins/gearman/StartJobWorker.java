@@ -28,7 +28,7 @@ import hudson.model.Cause;
 import hudson.model.Computer;
 import hudson.model.Hudson;
 import hudson.model.Queue;
-import hudson.model.StringParameterValue;
+import hudson.model.TextParameterValue;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.slaves.OfflineCause;
 
@@ -141,7 +141,7 @@ public class StartJobWorker extends AbstractGearmanFunction {
                     }.getType());
             // set build parameters that were passed in from client
             for (Map.Entry<String, String> entry : inParams.entrySet()) {
-                buildParams.add(new StringParameterValue(entry.getKey(), entry.getValue()));
+                buildParams.add(new TextParameterValue(entry.getKey(), entry.getValue()));
             }
             String offline = inParams.get("OFFLINE_NODE_WHEN_COMPLETE");
             if (offline != null) {
