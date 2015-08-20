@@ -28,6 +28,8 @@ import hudson.model.Cause;
 import hudson.model.Computer;
 import hudson.model.Hudson;
 import hudson.model.Queue;
+import hudson.model.labels.LabelAtom;
+import hudson.model.Node;
 import hudson.model.TextParameterValue;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.slaves.OfflineCause;
@@ -37,6 +39,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -99,6 +102,18 @@ public class StartJobWorker extends AbstractGearmanFunction {
        if (result != null) {
            data.put("result", result.toString());
        }
+
+       ArrayList<String> nodeLabels = new ArrayList<String>();
+       Node node = build.getBuiltOn();
+       if (node != null) {
+           Set<LabelAtom> nodeLabelAtoms = node.getAssignedLabels();
+           for (LabelAtom labelAtom : nodeLabelAtoms) {
+               nodeLabels.add(labelAtom.getDisplayName());
+           }
+       }
+       data.put("node_labels", nodeLabels);
+       data.put("node_name", node.getNodeName());
+
        Gson gson = new Gson();
        return gson.toJson(data);
    }
