@@ -20,14 +20,11 @@
 package hudson.plugins.gearman;
 
 import hudson.model.Run;
-import hudson.security.ACL;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 
-import org.acegisecurity.context.SecurityContextHolder;
-import org.acegisecurity.context.SecurityContext;
 import org.gearman.client.GearmanJobResult;
 import org.gearman.client.GearmanJobResultImpl;
 import org.gearman.worker.AbstractGearmanFunction;
@@ -84,16 +81,11 @@ public class SetDescriptionWorker extends AbstractGearmanFunction {
             // find build then update its description
             Run<?,?> build = GearmanPluginUtil.findBuild(jobName, Integer.parseInt(buildNumber));
             if (build != null) {
-                SecurityContext oldContext = ACL.impersonate(ACL.SYSTEM);
                 try {
-                    try {
-                        build.setDescription(buildDescription);
-                    } catch (IOException e) {
-                        throw new IllegalArgumentException("Unable to set description for " +
-                                                           jobName + ": " + buildNumber);
-                    }
-                } finally {
-                    SecurityContextHolder.setContext(oldContext);
+                    GearmanPluginUtil.setBuildDescription(build, buildDescription);
+                } catch (IOException e) {
+                    throw new IllegalArgumentException("Unable to set description for " +
+                                                       jobName + ": " + buildNumber);
                 }
                 jobResultMsg = "Description for Jenkins build " +buildNumber+" was updated to " + buildDescription;
                 jobResult = true;

@@ -21,9 +21,14 @@ package hudson.plugins.gearman;
 import hudson.model.AbstractProject;
 import hudson.model.Computer;
 import hudson.model.Run;
+import hudson.security.ACL;
+
+import java.io.IOException;
 
 import jenkins.model.Jenkins;
 
+import org.acegisecurity.context.SecurityContextHolder;
+import org.acegisecurity.context.SecurityContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,13 +75,35 @@ public class GearmanPluginUtil {
      */
     public static Run<?,?> findBuild(String jobName, int buildNumber) {
 
-        AbstractProject<?,?> project = Jenkins.getActiveInstance().getItemByFullName(jobName, AbstractProject.class);
-        if (project != null){
-            Run<?,?> run = project.getBuildByNumber(buildNumber);
-            if (run != null) {
-                return run;
+        SecurityContext oldContext = ACL.impersonate(ACL.SYSTEM);
+        try {
+            AbstractProject<?,?> project = Jenkins.getActiveInstance().getItemByFullName(jobName, AbstractProject.class);
+            if (project != null){
+                Run<?,?> run = project.getBuildByNumber(buildNumber);
+                if (run != null) {
+                    return run;
+                }
             }
+            return null;
+        } finally {
+            SecurityContextHolder.setContext(oldContext);
         }
-        return null;
+    }
+
+    /**
+     * Sets description of the build
+     *
+     * @param build
+     *      Build to set the description of
+     * @param description
+     *      New build description
+     */
+    public static void setBuildDescription(Run build, String description) throws IOException {
+        SecurityContext oldContext = ACL.impersonate(ACL.SYSTEM);
+        try {
+            build.setDescription(description);
+        } finally {
+            SecurityContextHolder.setContext(oldContext);
+        }
     }
 }
