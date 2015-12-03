@@ -20,6 +20,7 @@ package hudson.plugins.gearman;
 
 import hudson.model.Computer;
 import hudson.slaves.DumbSlave;
+import jenkins.model.Jenkins;
 
 import org.junit.Test;
 import org.jvnet.hudson.test.HudsonTestCase;
@@ -45,7 +46,7 @@ public class GearmanPluginUtilTest extends HudsonTestCase {
     @Test
     public void testGetRealNameMaster() throws Exception {
 
-        assertEquals("master", GearmanPluginUtil.getRealName(Computer.currentComputer()));
+        assertEquals("master", GearmanPluginUtil.getRealName(Jenkins.getActiveInstance().getComputer("")));
     }
 
 }
