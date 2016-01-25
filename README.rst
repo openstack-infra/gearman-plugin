@@ -33,7 +33,7 @@ Bugs should be filed on StoryBoard, not GitHub:
 
 Cloning:
 
- * https://github.com/openstack-infra/gearman-plugin.git
+ * https://git.openstack.org/openstack-infra/gearman-plugin
 
 
 License
