@@ -117,7 +117,7 @@ public class ExecutorWorkerThread extends AbstractWorkerThread{
         if (!computer.isOffline()) {
             Node node = computer.getNode();
 
-            List<AbstractProject> allProjects = Jenkins.getInstance().getAllItems(AbstractProject.class);
+            List<AbstractProject> allProjects = Jenkins.getActiveInstance().getAllItems(AbstractProject.class);
             for (AbstractProject<?, ?> project : allProjects) {
 
                 if (project.isDisabled()) { // ignore all disabled projects

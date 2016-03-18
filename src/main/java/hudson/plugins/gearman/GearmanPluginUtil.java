@@ -51,7 +51,7 @@ public class GearmanPluginUtil {
      */
     public static String getRealName(Computer computer) {
 
-        if (Computer.currentComputer() == computer) {
+        if (Jenkins.getActiveInstance().getComputer("") == computer) {
             return "master";
         } else {
             return computer.getName();
@@ -70,7 +70,7 @@ public class GearmanPluginUtil {
      */
     public static Run<?,?> findBuild(String jobName, int buildNumber) {
 
-        AbstractProject<?,?> project = Jenkins.getInstance().getItemByFullName(jobName, AbstractProject.class);
+        AbstractProject<?,?> project = Jenkins.getActiveInstance().getItemByFullName(jobName, AbstractProject.class);
         if (project != null){
             Run<?,?> run = project.getBuildByNumber(buildNumber);
             if (run != null) {
