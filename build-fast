@@ -1,3 +1,0 @@
-#!/bin/bash -eux
-. version-properties.sh
-mvn -Dproject-version="$PROJECT_VER" -DskipTests=true  clean package
